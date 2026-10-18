@@ -1,0 +1,73 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  target: linux-x86_64,   exe: vexaim }
+          - { os: macos-14,       target: macos-arm64,    exe: vexaim }
+          - { os: macos-15-intel, target: macos-x86_64,   exe: vexaim }
+          - { os: windows-latest, target: windows-x86_64, exe: vexaim.exe }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config shellcheck
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --release --manifest-path cli/Cargo.toml
+
+      - name: Test CLI
+        run: cargo test --manifest-path cli/Cargo.toml
+
+      - name: Test vendored discovery logic
+        run: cargo test --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features serial
+
+      - name: Smoke test the binary
+        shell: bash
+        run: cli/target/release/${{ matrix.exe }} --version
+
+      - name: shellcheck (Linux)
+        if: runner.os == 'Linux'
+        run: shellcheck -s sh install.sh scripts/package.sh dev/test-install.sh skill/vex-aim/linux/install-udev.sh
+
+      - name: Package and test the installer (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: |
+          sh scripts/package.sh ${{ matrix.target }} cli/target/release/${{ matrix.exe }} dist
+          sh dev/test-install.sh dist
+
+      - name: Package and test the installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Compress-Archive -Path cli/target/release/vexaim.exe -DestinationPath dist/vexaim-windows-x86_64.zip -Force
+          $h = (Get-FileHash -Algorithm SHA256 dist/vexaim-windows-x86_64.zip).Hash.ToLower()
+          "$h  vexaim-windows-x86_64.zip" | Set-Content -Path dist/SHA256SUMS
+          $home1 = Join-Path $env:RUNNER_TEMP "h1"
+          New-Item -ItemType Directory -Path $home1 | Out-Null
+          ./install.ps1 -TargetHome $home1 -DryRun -FromDir dist
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed" }
+          ./install.ps1 -TargetHome $home1 -FromDir dist -NoDoctor
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed" }
+          if (-not (Test-Path "$home1/.agents/skills/vex-aim/bin/vexaim.exe")) { throw "binary not installed" }
+          if (-not (Test-Path "$home1/.claude/skills/vex-aim/SKILL.md")) { throw "skill not installed" }
+          & "$home1/.agents/skills/vex-aim/bin/vexaim.exe" --version
+          ./install.ps1 -TargetHome $home1 -Uninstall
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed" }
+          if (Test-Path "$home1/.agents/skills/vex-aim") { throw "uninstall left files" }

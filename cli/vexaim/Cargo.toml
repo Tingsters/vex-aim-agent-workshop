@@ -1,0 +1,18 @@
+[package]
+name = "vexaim"
+version = "0.1.0"
+edition = "2024"
+description = "Run MicroPython on a VEX AIM robot over USB (built on vex-v5-serial)"
+license = "Apache-2.0"
+repository = "https://github.com/steveonjava/vex-aim-agent-workshop"
+
+[features]
+# Use the thread-based serial adapter that Windows uses, on any OS (for testing it).
+blocking-io = ["vex-v5-serial/blocking-io"]
+
+[dependencies]
+vex-v5-serial = { workspace = true, features = ["serial"], default-features = false }
+smol = "2.0.2"
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"
+nokhwa = { version = "0.10", default-features = false, features = ["input-native"] }
