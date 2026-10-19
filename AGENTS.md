@@ -37,6 +37,9 @@ On other platforms use `--from-source` (macOS/Linux) / `-FromSource` (Windows); 
 First make sure the robot is **plugged in over USB and switched on** (the installer finishes with a robot check;
 if it is not ready yet that is only a warning, not a failed install).
 
+The installer needs only tools every macOS/Linux install has: `sh`, `curl` or `wget`, `tar`, and `sha256sum` or
+`shasum`. On Windows it needs PowerShell 5.1 or newer. If one is missing, tell the student which.
+
 macOS / Linux:
 
 ```
@@ -73,14 +76,20 @@ https://rustup.rs only if they agree, then re-run with `--from-source`.
 
 **Skip this step if the installer printed `udev rule already installed`.** Otherwise: on Linux, ModemManager grabs new USB serial devices for ~25 seconds and can corrupt the robot's console, which
 makes the robot flaky after every plug-in. A one-time udev rule fixes it (it only matches the AIM, USB
-`2888:0700`). Tell the student what it does, **ask permission**, then run:
+`2888:0700`). Ask the student before running it, for example:
+
+> "On Linux the system's modem manager can disturb the robot's USB connection for about 25 seconds after every
+> plug-in. I'd like to install a small udev rule that stops that; it only affects the VEX AIM (USB 2888:0700).
+> It needs administrator access (sudo), so you may have to type your password. OK to go ahead?"
+
+If they agree, from the repository root run (this works whichever agents you installed for):
 
 ```
-sh ~/.agents/skills/vex-aim/linux/install-udev.sh
+sh install.sh --udev
 ```
 
-(or re-run `sh install.sh --udev`). It uses `sudo`; the student may need to type their password. Afterwards
-the robot must be **unplugged and plugged back in**. macOS and Windows need nothing here.
+It uses `sudo`; the student may need to type their password. Afterwards the robot must be **unplugged and plugged
+back in**. macOS and Windows need nothing here.
 
 ## Step 4: verify with the real robot
 
@@ -99,15 +108,27 @@ Then read the battery and state with `<Tool path> info`, which prints one line o
 `{"battery_pct": 100, "heading": 125.4, "x_mm": 18, "y_mm": 45, "stopped": true}`, and report the battery to the
 student. **Do not run robot commands that move it** at this stage.
 
-If `doctor` says no robot is found, check the cable and the power switch, wait 30 seconds, and retry; on
-Linux without the udev rule, a first failure right after plugging in is normal.
+### If the diagnostic does not say `ready`
+
+1. On Linux run `lsusb | grep 2888:0700`. No output means the computer cannot see the robot at all: the cable,
+   the power switch, or (in a virtual machine) USB passthrough. You cannot fix that yourself; ask the student to
+   check: robot switched on, the USB **data** cable that came with it (some only charge), plugged straight into the
+   computer (no hub or dock), unplug and re-plug.
+2. Wait about 30 seconds (on Linux without the udev rule the first failure after plugging in is normal) and run
+   `doctor` again. **Try at most 3 times**, then stop and hand back to the student.
+3. If the robot is visible to the OS but `doctor` fails, read the `fix:` lines and `docs/troubleshooting.md`. A
+   sandboxed agent (for example Goose installed as a Flatpak) cannot see USB devices at all; use a non-sandboxed
+   install of the agent.
+4. **Never invent a battery level.** If you could not read one, say so plainly, say what the diagnostic printed,
+   and still do step 5 below: the install is complete and the new-session step does not depend on the robot.
 
 ## Step 5: finish
 
 Tell the student, in plain language:
 
 1. What was installed and where (the two skill folders and the `vexaim` path).
-2. The robot's battery level and that `doctor` reported ready (or what is still wrong).
+2. The robot's battery level and that `doctor` reported ready. If you could not reach the robot, say exactly what
+   `doctor` printed and what the student should check, with **no battery number**.
 3. **They must start a new session** of their agent (quit and reopen Goose, or start a new `claude` / `codex`
    session) so it loads the new `vex-aim` skill. Skills are discovered at session start.
 4. A first prompt to try in the new session, for example:
