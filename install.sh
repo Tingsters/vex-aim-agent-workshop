@@ -15,7 +15,7 @@
 # `sh install.sh --help` prints this header.
 set -eu
 
-REPO="steveonjava/vex-aim-agent-workshop"
+REPO="Tingsters/vex-aim-agent-workshop"
 BASE_URL="https://github.com/$REPO/releases/latest/download"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SKILL_SRC="$HERE/skill/vex-aim"

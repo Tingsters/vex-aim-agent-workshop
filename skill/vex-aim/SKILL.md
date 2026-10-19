@@ -12,7 +12,7 @@ Camera frames come back to this computer as ordinary JPEG files.
 `vexaim` is the program in this skill's own `bin/` folder, next to this SKILL.md (`bin/vexaim`, or
 `bin\vexaim.exe` on Windows). Call it by its full path, e.g. `~/.agents/skills/vex-aim/bin/vexaim`; below it is
 just written `vexaim`. If `bin/` is missing the skill was not installed with the repo's installer: see
-https://github.com/steveonjava/vex-aim-agent-workshop (`install.sh` / `install.ps1`).
+https://github.com/Tingsters/vex-aim-agent-workshop (`install.sh` / `install.ps1`).
 
 ## First: always run the doctor
 
