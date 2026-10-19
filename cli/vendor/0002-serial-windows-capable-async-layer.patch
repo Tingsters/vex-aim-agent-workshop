@@ -1,4 +1,4 @@
-From 41ffe023512edc7fed0ea9968455014390b3d002 Mon Sep 17 00:00:00 2001
+From 549771afefb1c9aeefbd73641fea5a8d362d64b8 Mon Sep 17 00:00:00 2001
 From: Cassandra Chin <cassandra.chin@gmail.com>
 Date: Sun, 18 Oct 2026 16:24:23 -0700
 Subject: [PATCH 2/2] serial: make the async serial layer compile and run on
@@ -50,7 +50,7 @@ index 4bd1a78..a0f4a95 100644
  screen-commands = ["dep:image"]
  file-commands = ["dep:flate2"]
 diff --git a/packages/vex-v5-serial/src/serial.rs b/packages/vex-v5-serial/src/serial.rs
-index a3f6649..83ceae8 100644
+index efea061..3693af0 100644
 --- a/packages/vex-v5-serial/src/serial.rs
 +++ b/packages/vex-v5-serial/src/serial.rs
 @@ -1,6 +1,5 @@

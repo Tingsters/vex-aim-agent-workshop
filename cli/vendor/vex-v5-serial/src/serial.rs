@@ -665,6 +665,16 @@ pub enum SerialError {
 mod tests {
     use super::*;
 
+    /// `serialport` reports the CDC *data* interface on macOS (communication interface + 1) and
+    /// `types_by_location()` compensates for that, so feed it numbers the way each OS reports them.
+    fn reported(interface: u8) -> u8 {
+        if cfg!(target_os = "macos") {
+            interface + 1
+        } else {
+            interface
+        }
+    }
+
     fn usb_port(name: &str, pid: u16, interface: u8) -> SerialPortInfo {
         SerialPortInfo {
             port_name: name.to_string(),
@@ -674,7 +684,7 @@ mod tests {
                 serial_number: None,
                 manufacturer: None,
                 product: None,
-                interface: Some(interface),
+                interface: Some(reported(interface)),
             }),
         }
     }

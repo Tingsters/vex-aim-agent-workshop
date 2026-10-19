@@ -157,9 +157,9 @@ for d in $want_dirs; do
   cp -R "$SKILL_SRC/." "$d/"
   cp "$TMP/vexaim" "$d/bin/vexaim"
   chmod +x "$d/bin/vexaim"
-  [ -d "$d/linux" ] && chmod +x "$d/linux/install-udev.sh" 2>/dev/null || true
+  if [ -d "$d/linux" ]; then chmod +x "$d/linux/install-udev.sh" 2>/dev/null || true; fi
   printf 'installed by vex-aim-agent-workshop install.sh on %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$d/$MARKER"
-  [ "$OS" = "Darwin" ] && xattr -d com.apple.quarantine "$d/bin/vexaim" 2>/dev/null || true
+  if [ "$OS" = "Darwin" ]; then xattr -d com.apple.quarantine "$d/bin/vexaim" 2>/dev/null || true; fi
   say "installed skill + tool: $d"
   installed="$installed $d"
 done
