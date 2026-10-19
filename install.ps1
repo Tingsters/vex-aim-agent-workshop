@@ -18,7 +18,7 @@
 param(
   [string]$Agents = "all",
   [string]$FromDir = "",
-  [string]$BaseUrl = "https://github.com/steveonjava/vex-aim-agent-workshop/releases/latest/download",
+  [string]$BaseUrl = "https://github.com/Tingsters/vex-aim-agent-workshop/releases/latest/download",
   [string]$TargetHome = $HOME,
   [switch]$FromSource,
   [switch]$DryRun,

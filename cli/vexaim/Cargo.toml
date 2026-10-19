@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "Run MicroPython on a VEX AIM robot over USB (built on vex-v5-serial)"
 license = "Apache-2.0"
-repository = "https://github.com/steveonjava/vex-aim-agent-workshop"
+repository = "https://github.com/Tingsters/vex-aim-agent-workshop"
 
 [features]
 # Use the thread-based serial adapter that Windows uses, on any OS (for testing it).

@@ -14,7 +14,7 @@ no programming tools to install by hand: your agent sets it all up.
 1. Plug the robot into your laptop with the USB cable and switch it on.
 2. Open your agent and paste this prompt:
 
-> Clone https://github.com/steveonjava/vex-aim-agent-workshop and follow its AGENTS.md to set up my VEX AIM robot (it is plugged in over USB). Install the skill and the vexaim tool for this agent. Tell me before you run anything that needs administrator/sudo access. When it's installed, run the diagnostic and tell me the robot's battery level, then tell me to start a new session so the skill is loaded.
+> Clone https://github.com/Tingsters/vex-aim-agent-workshop and follow its AGENTS.md to set up my VEX AIM robot (it is plugged in over USB). Install the skill and the vexaim tool for this agent. Tell me before you run anything that needs administrator/sudo access. When it's installed, run the diagnostic and tell me the robot's battery level, then tell me to start a new session so the skill is loaded.
 
 3. Answer if it asks for permission (on Linux it asks once before using `sudo`).
 4. When it says setup is done, **start a new session** of your agent (quit and reopen Goose, or start a new
@@ -51,7 +51,7 @@ The agent can make the robot move and there are no software speed or distance li
 `install.sh` (macOS/Linux) or `install.ps1` (Windows) does exactly this, and nothing else:
 
 1. Downloads the prebuilt `vexaim` program for your computer from this repository's
-   [Releases](https://github.com/steveonjava/vex-aim-agent-workshop/releases), and **checks its SHA-256 checksum**
+   [Releases](https://github.com/Tingsters/vex-aim-agent-workshop/releases), and **checks its SHA-256 checksum**
    (it refuses to install if the check fails).
 2. Copies the skill (`skill/vex-aim/`) and the program into `~/.agents/skills/vex-aim/` (Goose, Codex) and
    `~/.claude/skills/vex-aim/` (Claude Code). Those folders are the only places it writes.
@@ -65,7 +65,7 @@ folders it created itself.
 ## Manual install (no agent needed)
 
 ```sh
-git clone https://github.com/steveonjava/vex-aim-agent-workshop
+git clone https://github.com/Tingsters/vex-aim-agent-workshop
 cd vex-aim-agent-workshop
 sh install.sh                       # macOS / Linux
 # Windows PowerShell: powershell -ExecutionPolicy Bypass -File install.ps1

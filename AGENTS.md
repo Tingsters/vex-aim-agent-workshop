@@ -11,7 +11,7 @@ need Rust, Python packages, VEXcode, a browser or special Wi-Fi.
 ## Ground rules
 
 - Work from this repository's root (the folder containing this file). If you have not cloned it yet:
-  `git clone https://github.com/steveonjava/vex-aim-agent-workshop` and `cd` into it.
+  `git clone https://github.com/Tingsters/vex-aim-agent-workshop` and `cd` into it.
 - Change only what this runbook says: the skill folders listed below. Do not edit agent settings, shell profiles
   or other config.
 - **Ask the student before anything that needs administrator rights (`sudo`)**, and before installing Rust.
