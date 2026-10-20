@@ -1,124 +1,86 @@
-# Control a VEX AIM robot with an AI agent
+# VEX AIM agent workshop
 
-Let an AI coding agent (**Goose**, **Claude Code**, or **Codex CLI**) drive your [VEX AIM](https://www.vexrobotics.com/aim)
-robot: light it up, make it talk, read its sensors, look through its camera, and run your own ideas, just by
-chatting. Everything runs on your laptop over the robot's USB cable. No VEXcode, no browser, no Wi-Fi setup, and
-no programming tools to install by hand: your agent sets it all up.
+Build robot ideas through ordinary prompts with Goose, Codex or Claude Code.
+Ask it to move, react, play sounds, change lights, or take a photograph.
 
-Bluetooth support is under development. Native 640x480 BLE camera capture now
-works from the home screen without menu navigation. The local 0.2.0-dev CLI adds
-Bluetooth commands; the published student setup still uses USB. Instructors can read
-the [Bluetooth investigation and test procedure](docs/bluetooth.md).
+This repository contains the **workshop teaching skill and activities**. The
+standalone [vexaim CLI](https://github.com/Tingsters/vexaim-cli) provides robot
+communication, prebuilt binaries and a general-purpose robot skill.
 
-## Quick start (about 5 minutes)
+## Start here
 
-**You need:** a VEX AIM robot and its USB cable, a laptop, and one agent installed and signed in
-([Goose](https://goose-docs.ai), [Claude Code](https://claude.com/claude-code), or
-[Codex CLI](https://developers.openai.com/codex/cli)). The agent's AI model needs internet; the robot does not.
+You need an agent installed and signed in, a VEX AIM, and a Windows x86_64,
+Linux x86_64, Apple Silicon Mac or Intel Mac. USB and Bluetooth are supported.
+No Rust, Python packages, VEXcode, saved robot project or special Wi-Fi is needed.
+Your agent's model needs internet access; the robot does not need venue Wi-Fi.
 
-1. Plug the robot into your laptop with the USB cable and switch it on.
-2. Open your agent and paste this prompt:
+Paste into your agent:
 
-> Clone https://github.com/Tingsters/vex-aim-agent-workshop and follow its AGENTS.md to set up my VEX AIM robot (it is plugged in over USB). Install the skill and the vexaim tool for this agent. Tell me before you run anything that needs administrator/sudo access. When it's installed, run the diagnostic and tell me the robot's battery level, then tell me to start a new session so the skill is loaded.
+> Clone https://github.com/Tingsters/vex-aim-agent-workshop and follow AGENTS.md
+> to install the workshop and the released vexaim CLI. Ask which connection I
+> want if I haven't specified USB or Bluetooth. Check the robot without moving
+> it and report its battery. Tell me before anything needs administrator access.
 
-3. Answer if it asks for permission (on Linux it asks once before using `sudo`).
-4. When it says setup is done, **start a new session** of your agent (quit and reopen Goose, or start a new
-   `claude` / `codex` session). Skills are loaded when a session starts.
-5. Try it:
+The installer installs the latest stable CLI release with its matching basic
+skill, then adds this workshop's teaching skill. Start a **new agent session**
+after installation so both skills can be discovered. Then try:
 
-> Use the vex-aim skill. Run the diagnostic, set the robot's lights to blue for two seconds, then turn them off. Do not move it.
+> Use the vex-aim-workshop skill. Make the robot's lights blue for two seconds.
+> Do not move it.
 
-If the lights turn blue, you are done. Everything below is for the curious, for troubleshooting, and for
-instructors.
+For Bluetooth, tell the agent the exact robot name and keep VEXcode closed.
+Pairing codes go into a masked local terminal, never into chat. The agent reuses
+the connection across requests. If the robot sleeps, it needs switching on again.
 
-## What can you ask it to do?
+## Explore
 
-Once the skill is loaded the agent can run any Python on the robot. Ideas, easiest first:
+Try "spin in a circle", "make up a short dance", or an idea of your own.
+Students do not need to learn CLI commands, identify their floor, arrange
+calibration targets, or install developer tools. Before motion, clear the floor
+and have someone near the power switch. Keep camera photographs local unless
+you explicitly choose to share them.
 
-- *"What is the robot's battery level and which way is it facing?"*
-- *"Make the lights a rainbow that cycles through colours, then show a happy face and play a sound."*
-- *"Take a photo with the robot's camera and tell me what you see."*
-- *"Drive forward 5 cm slowly, then turn the lights green if it worked."* (clear the floor first)
-- *"Look around with the camera and tell me if there is a ball in front of the robot."*
-- *"Write me a little game or light show with the robot and run it."*
+The current turn default is conservative. Physical accuracy varies by surface;
+automatic camera-based movement correction is not enabled. Software CI does not
+prove hardware accuracy. [Current movement evidence](docs/workshop-motion.md).
 
-## Safety
+## Manual installation
 
-The agent can make the robot move and there are no software speed or distance limits, so the safety is yours:
+From a checkout, run:
 
-- Put the robot on a **clear, flat floor** (not a table edge) with room to move.
-- Keep a hand near the **power switch**. If the robot misbehaves, switch it off.
-- Start with **small, slow moves** and ask the agent to tell you before the robot moves.
-- The camera sees your room. Don't send photos of people to an AI service without their permission.
-
-## What the installer does (so nothing is a surprise)
-
-`install.sh` (macOS/Linux) or `install.ps1` (Windows) does exactly this, and nothing else:
-
-1. Downloads the prebuilt `vexaim` program for your computer from this repository's
-   [Releases](https://github.com/Tingsters/vex-aim-agent-workshop/releases), and **checks its SHA-256 checksum**
-   (it refuses to install if the check fails).
-   Windows also requires version 0.1.1 or newer, which fixes silent REPL initialization caused by DTR.
-2. Copies the skill (`skill/vex-aim/`) and the program into `~/.agents/skills/vex-aim/` (Goose, Codex) and
-   `~/.claude/skills/vex-aim/` (Claude Code). Those folders are the only places it writes.
-3. Linux only, **with your permission**: installs a small udev rule (needs `sudo`) so the system's modem manager
-   leaves the robot alone. See [docs/troubleshooting.md](docs/troubleshooting.md).
-4. Runs `vexaim doctor` to check the robot connection.
-
-Remove everything it installed with `sh install.sh --uninstall` (Windows: `install.ps1 -Uninstall`). It only removes
-folders it created itself.
-
-## Manual install (no agent needed)
-
-```sh
-git clone https://github.com/Tingsters/vex-aim-agent-workshop
-cd vex-aim-agent-workshop
-sh install.sh                       # macOS / Linux
-# Windows PowerShell: powershell -ExecutionPolicy Bypass -File install.ps1
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-Useful options: `--agents goose|codex|claude|all`, `--dry-run`, `--uninstall`, `--udev` (Linux),
-`--from-source` (build with Rust instead of downloading), `--help`.
+```sh
+sh install.sh
+```
 
-## Does it work on my computer?
+Both skills are installed under `~/.agents/skills/` for Goose/Codex and
+`~/.claude/skills/` for Claude Code:
 
-| Platform | Status |
+| Skill | Purpose |
 |---|---|
-| Linux x86_64 | **Tested with a real robot**: connection, commands, camera, unplug/replug recovery |
-| macOS (Apple Silicon, Intel) | Built automatically by CI; **not yet tested with a real robot** |
-| Windows x86_64 | **USB tested with a real robot, 0.1.1+**: diagnostic, status, Python execution, error/timeout recovery, 100 consecutive calls, and installer checks in PowerShell 5.1/7. USB camera and actuators remain untested on Windows. See [hardware notes](docs/hardware-notes.md). |
-| Bluetooth | **Development CLI only**: Windows authentication, REPL/state and native 640x480 camera snapshots verified. Full sensor/actuator and release acceptance pending. Published 0.1.1 is USB-only. |
+| `vex-aim` | General robot control; contains `bin/vexaim` or `bin/vexaim.exe` |
+| `vex-aim-workshop` | Workshop teaching; refers to the basic skill |
 
-School-managed laptops may block downloaded programs. Ask your instructor about a loaner laptop. If you use
-the Goose app from Flatpak on Linux, it cannot see USB devices without extra permissions; use the standard
-Goose build or the CLI instead.
+Use `--agents claude` / `-Agents claude` for one agent, or `--dry-run` /
+`-DryRun` to preview. `--from-dir DIR` / `-FromDir DIR` accepts a downloaded CLI
+release's archives, installers, VERSION and SHA256SUMS. Installation can finish
+while the robot is off. Rerun to adopt the latest stable release; nothing updates
+itself during a workshop. Close robot sessions before updating.
 
-## Troubleshooting
+`--uninstall` / `-Uninstall` removes the workshop skill only. The shared CLI and
+basic skill remain available for other projects. Build-from-source instructions
+live in the CLI repository rather than this workshop.
 
-Start with `vexaim doctor`; every failed check prints a `fix:` line. More help: [docs/troubleshooting.md](docs/troubleshooting.md).
-Common ones: use the cable that came with the robot (some cables only charge), plug straight into the laptop,
-close VEXcode or any serial monitor, and on Linux wait ~30 seconds after plugging in unless the udev rule is installed.
+## Further reading
 
-## How it works
+- [Instructor guide](docs/instructors.md)
+- [Optional activity ideas](skill/vex-aim-workshop/references/activities.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Standalone CLI downloads](https://tingsters.github.io/vexaim-cli/)
+- [CLI source and hardware evidence](https://github.com/Tingsters/vexaim-cli)
 
-The robot's USB port includes a MicroPython console and a camera. The `vexaim` tool sends your agent's Python code to
-the console and returns what it prints; the camera shows up as an ordinary webcam. It is built on
-[vexide/vex-v5-serial](https://github.com/vexide/vex-v5-serial) with three patches. Details, evidence and known
-limits: [docs/how-it-works.md](docs/how-it-works.md) and [docs/hardware-notes.md](docs/hardware-notes.md).
-Instructors: [docs/instructors.md](docs/instructors.md).
-
-## Repository map
-
-| Path | What it is |
-|---|---|
-| `AGENTS.md` / `CLAUDE.md` | The step-by-step runbook your agent follows |
-| `skill/vex-aim/` | The skill your agent loads: how to control the robot |
-| `install.sh`, `install.ps1` | Installers (download + verify + copy) |
-| `cli/` | Source of the `vexaim` tool (Rust) and the vendored, patched `vex-v5-serial` |
-| `docs/` | Troubleshooting, how it works, hardware notes, instructor guide |
-| `dev/` | Optional hardware and installer test scripts |
-
-## License
-
-Apache-2.0 (see [LICENSE](LICENSE)). Includes MIT-licensed code from vexide/vex-v5-serial; see [NOTICE.md](NOTICE.md).
-VEX and AIM are trademarks of their owners; this is an independent project.
+This project uses Showtail for a local record of the student's prompts and work.
+Follow the project's capture instructions; keep the trail and photographs local.
