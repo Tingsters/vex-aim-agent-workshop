@@ -1,6 +1,6 @@
 ---
 name: vex-aim
-description: Control a VEX AIM robot from this computer over USB or the workshop's developing Bluetooth transport. Use when the user wants to drive, light up, make sounds with, read sensors from, or see through its camera. Uses the vexaim tool; read the Bluetooth reference for wireless requests and release limitations.
+description: Make a VEX AIM robot carry out ideas expressed in ordinary prompts, such as spinning in a circle, moving, reacting, lighting up, or taking a photo. Controls USB or developing Bluetooth access with vexaim; uses a reusable wireless session for responsive workshop interactions.
 ---
 
 # Controlling a VEX AIM robot
@@ -8,6 +8,27 @@ description: Control a VEX AIM robot from this computer over USB or the workshop
 The AIM's USB port is a **MicroPython REPL**. The bundled `vexaim` tool sends any Python you write to the
 robot and returns what it prints. You may run arbitrary Python on the robot; be creative.
 Camera frames come back to this computer as ordinary JPEG files.
+
+## Workshop prompts: ask, then move
+
+Students describe ideas in chat; they do not learn CLI commands. Read
+`references/workshop.md` for the agent's session and movement tools. Translate
+"spin in a circle" to one 360-degree turn in place (left unless specified).
+Use short prepared actions for common requests and compose them for creative
+ones; arbitrary Python remains available. Do not turn the workshop into a fixed
+menu or ask students to write commands, label surfaces or arrange calibration targets.
+
+For Bluetooth, start/reuse one explicitly named session. Successful startup
+already reads robot status; do not run a separate doctor, info and reconnect for
+each prompt. Reuse the session ID for movement, Python, snapshots and stop.
+Announce motion, preserve established physical readiness within the current
+interaction, and acknowledge completion promptly. Report actual sensor results;
+IMU agreement alone does not prove physical turn accuracy.
+
+The current helper defaults to 30 DPS pending independent tests across surfaces.
+Do not assume 60/90 DPS or a correction measured on one floor works everywhere.
+No additional calibration is required. Camera calibration is a separate developer
+experiment and must not delay ordinary requests or require student setup.
 
 For Bluetooth requests, first read `references/bluetooth.md`: published 0.1.1 is
 USB-only; the local 0.2.0-dev CLI adds explicit Bluetooth commands. Native 640x480
@@ -22,7 +43,12 @@ automatic AI Vision selector; do not replay a fixed press sequence or reset the 
 just written `vexaim`. If `bin/` is missing the skill was not installed with the repo's installer: see
 https://github.com/Tingsters/vex-aim-agent-workshop (`install.sh` / `install.ps1`).
 
-## First: always run the doctor
+## Connection readiness
+
+A healthy Bluetooth workshop session replaces repeated doctor calls. Its status
+command is cached, not proof the robot is still awake; an actual I/O failure needs
+a live state check/reconnection. For standalone/USB access, run doctor at the start
+and after a connection failure, rather than before every already-connected action.
 
 Use the selected transport. For wireless requests, follow the Bluetooth reference
 and include `--transport bluetooth --name NAME`; do not diagnose Bluetooth with
@@ -76,7 +102,8 @@ avoid native argument quoting differences between PowerShell versions.
 - Output is stdout; a Python error prints the traceback and exits 1. Add `--json` for
   `{ok, stdout, stderr, timed_out}`. Default timeout 30 s (`--timeout N`); on timeout the program is
   interrupted with Ctrl-C.
-- `vexaim stop` = emergency stop: interrupts the running program, stops wheels and sound.
+- `vexaim stop` requests interruption and stops wheels and sound; wireless stopping needs a working link.
+  In a workshop session use `--session ID stop` so it does not scan/reconnect first.
 - `vexaim info` = battery, heading, x/y position as JSON.
 - `vexaim snap -o photo.jpg` = save one 640x480 camera frame. Open the JPEG yourself to look at it.
 
@@ -107,7 +134,8 @@ avoid native argument quoting differences between PowerShell versions.
 
 ## Safety (physical, supervised use)
 
-There are no software limits, so the human supplies them: a clear, level area; someone at the robot with
+The workshop movement helpers bound distance, speed and duration; arbitrary `exec` has no such limits.
+The human supplies a clear, level area; someone at the robot with
 a hand on the power switch; keep early moves small and slow (e.g. `move_for(50, 0, 40, MMPS)`); tell the
 human before the robot moves; never move toward the USB cable's end or off a table edge.
 The camera sees the room: do not send images of people to cloud services without their consent.
@@ -122,11 +150,15 @@ udev rule installed). If the cable is pulled mid-command, `vexaim` says the robo
 may or may not have run: check the robot before re-running anything.
 **Windows 11 (0.1.1):** doctor, info, Python execution, error/timeout recovery, and 100 consecutive calls
 passed; packaged installation was checked in PowerShell 5.1 and 7.
-**Not yet tested:** turns, `kicker.place/push`, harder kicks, longer/faster moves, AI Vision on real objects,
+**Not yet tested:** independent turn accuracy, new motion helpers on hardware, `kicker.place/push`, harder kicks, longer/faster moves, AI Vision on real objects,
 `Ctrl-C` interrupt during a move, Windows camera/actuators, and macOS hardware.
 For LED/emoji/sound the call succeeded on Linux but the
 human should confirm the effect. If the user asks for something untested, try it small first and report
 what actually happened.
+
+An earlier Windows BLE turn reported -359.84 degrees through the IMU, but the
+student observed the wrong final direction. That is not independent accuracy
+acceptance. New session/helper hardware results belong in `docs/workshop-motion.md`.
 
 The `linux/` folder is only for Linux computers: `sh <this skill folder>/linux/install-udev.sh` once (needs sudo;
 ask the human first) stops ModemManager from grabbing the robot's serial ports. Not needed on Windows/macOS,

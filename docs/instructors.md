@@ -1,5 +1,11 @@
 # Instructor guide (short)
 
+For the developing Bluetooth workshop workflow, students use ordinary chat
+prompts and the agent reuses a connection. No instructor/student surface setup or
+calibration routine is required. See [motion status](workshop-motion.md) for
+development acceptance and [agent instructions](../skill/vex-aim/references/workshop.md).
+The developer surface benchmark is not an event preparation requirement.
+
 ## Before the event (once)
 
 1. **Publish the corrected release** after validation: tag and push `v0.1.1`

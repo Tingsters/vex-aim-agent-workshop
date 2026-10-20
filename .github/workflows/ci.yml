@@ -57,6 +57,16 @@ jobs:
           python -m pip install bleak==3.0.2 keyring==25.7.0
           python -m unittest discover -s dev -p test_ble_feasibility.py -v
 
+      - name: Test robot motion helpers and independent benchmark evaluation (no hardware)
+        run: |
+          python -m unittest discover -s dev -p test_motion_helpers.py -v
+          python -m unittest discover -s dev -p test_motion_benchmark.py -v
+
+      - name: Test local camera registration spike (no photos or robot)
+        run: |
+          python -m pip install opencv-python-headless==4.13.0.92
+          python -m unittest discover -s dev -p test_turn_frames.py -v
+
       - name: Test blocking adapter (Linux)
         if: runner.os == 'Linux'
         run: |

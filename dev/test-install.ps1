@@ -47,6 +47,7 @@ try {
   foreach ($agent in @('.agents', '.claude')) {
     $skill = Join-Path $allHome "$agent/skills/vex-aim"
     Assert-True ((Test-Path "$skill/bin/vexaim.exe") -and (Test-Path "$skill/SKILL.md")) "installed $agent skill and executable"
+    Assert-True ((Test-Path "$skill/references/workshop.md") -and (Select-String -LiteralPath "$skill/SKILL.md" -SimpleMatch 'references/workshop.md' -Quiet)) "installed $agent prompt/session guidance with the tool"
     $version = & "$skill/bin/vexaim.exe" --version
     Assert-True ($LASTEXITCODE -eq 0 -and "$version" -match '^vexaim (\d+\.\d+\.\d+)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$' -and [version]$Matches[1] -ge [version]'0.1.1') "packaged executable runs for $agent"
   }

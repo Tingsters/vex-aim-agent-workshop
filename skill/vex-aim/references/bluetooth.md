@@ -1,5 +1,10 @@
 # Bluetooth status and instructor workflow
 
+For ordinary chat-driven workshop use, read `workshop.md` first. The development
+CLI can retain one session across prompts; its startup replaces repeated scans
+and standalone doctor calls. The commands below document standalone diagnostics
+and earlier investigation, not a checklist to repeat for each student request.
+
 The published `vexaim 0.1.1` executable is still USB-only. The workshop's local
 `0.2.0-dev` CLI implements Bluetooth; verify the executable version and help before
 using its flags. For an explicitly wireless request with USB unplugged, use that

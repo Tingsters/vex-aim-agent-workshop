@@ -135,7 +135,7 @@ async fn candidates() -> Result<Vec<(String, String, BluetoothDevice)>, Fail> {
     Ok(result)
 }
 
-async fn select(name: &str) -> Result<(String, BluetoothDevice), Fail> {
+pub(crate) async fn select(name: &str) -> Result<(String, BluetoothDevice), Fail> {
     let mut matches: Vec<_> = candidates()
         .await?
         .into_iter()
@@ -151,7 +151,7 @@ async fn select(name: &str) -> Result<(String, BluetoothDevice), Fail> {
     Ok((id, device))
 }
 
-async fn identity(conn: &BluetoothConnection) -> Result<serde_json::Value, Fail> {
+pub(crate) async fn identity(conn: &BluetoothConnection) -> Result<serde_json::Value, Fail> {
     let mut info = json!({});
     for (key, short) in [
         ("model", "2a24"),
@@ -185,7 +185,11 @@ async fn identity(conn: &BluetoothConnection) -> Result<serde_json::Value, Fail>
     Ok(info)
 }
 
-async fn authenticate(conn: &mut BluetoothConnection, id: &str, pair: bool) -> Result<(), Fail> {
+pub(crate) async fn authenticate(
+    conn: &mut BluetoothConnection,
+    id: &str,
+    pair: bool,
+) -> Result<(), Fail> {
     if !pair && conn.is_paired().await.map_err(io)? {
         return Ok(());
     }
@@ -226,6 +230,7 @@ pub fn run(cli: &Cli) -> Result<i32, Fail> {
             return Ok(0);
         }
         let name = cli.name.as_deref().ok_or_else(|| fail("Select the robot explicitly with --name NAME (see `vexaim bluetooth scan`)."))?;
+        crate::session::guard_one_shot(name).await?;
         let (id, device) = select(name).await?;
         if matches!(cli.cmd, Cmd::Bluetooth { command: BluetoothCmd::Forget }) {
             forget_code(&id)?;
@@ -293,6 +298,8 @@ async fn run_python(
             Cmd::Info => (STATE.to_string(),10,true),
             Cmd::Stop => (crate::STOP_CODE.to_string(),5,true),
             Cmd::Exec { code,file,timeout,no_preamble } => (crate::exec_source(code,file)?,*timeout,!*no_preamble),
+            Cmd::Turn { direction, degrees, speed } => (format!("{}{}", crate::motion::HELPERS, crate::motion::turn_source(*direction, *degrees, *speed)?), 23, true),
+            Cmd::Move { distance, angle, speed } => (format!("{}{}", crate::motion::HELPERS, crate::motion::move_source(*distance, *angle, *speed)?), 23, true),
             _ => return Err(fail("Unsupported Bluetooth command.")),
         };
         if preamble {
@@ -311,7 +318,7 @@ async fn run_python(
     operation
 }
 
-fn require_camera_firmware(info: &serde_json::Value) -> Result<(), Fail> {
+pub(crate) fn require_camera_firmware(info: &serde_json::Value) -> Result<(), Fail> {
     if info["model"] != "AIM" || info["hardware"] != "REV1" || info["firmware"] != "1.0.0.b0" {
         return Err(fail(
             "Native Bluetooth JPEG capture is verified only for AIM REV1 / BLE firmware 1.0.0.b0; no menu/reset fallback was attempted.",
@@ -320,7 +327,7 @@ fn require_camera_firmware(info: &serde_json::Value) -> Result<(), Fail> {
     Ok(())
 }
 
-async fn capture_jpeg(conn: &mut BluetoothConnection) -> Result<Vec<u8>, Fail> {
+pub(crate) async fn capture_jpeg(conn: &mut BluetoothConnection) -> Result<Vec<u8>, Fail> {
     conn.handshake(
         ScreenCapturePacket { layer: Some(8) },
         Duration::from_secs(3),
@@ -428,7 +435,7 @@ fn append_block(
     Ok(())
 }
 
-fn jpeg_dimensions(bytes: &[u8]) -> Result<(u32, u32), Fail> {
+pub(crate) fn jpeg_dimensions(bytes: &[u8]) -> Result<(u32, u32), Fail> {
     let bad = || fail("Incomplete or invalid native JPEG; output was not replaced.");
     if !bytes.starts_with(&[0xff, 0xd8]) || !bytes.ends_with(&[0xff, 0xd9]) {
         return Err(bad());
@@ -471,7 +478,7 @@ fn jpeg_dimensions(bytes: &[u8]) -> Result<(u32, u32), Fail> {
     Err(bad())
 }
 
-fn save_atomic(path: &Path, bytes: &[u8]) -> Result<(), Fail> {
+pub(crate) fn save_atomic(path: &Path, bytes: &[u8]) -> Result<(), Fail> {
     let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())

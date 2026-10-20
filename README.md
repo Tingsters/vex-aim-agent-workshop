@@ -10,6 +10,13 @@ works from the home screen without menu navigation. The local 0.2.0-dev CLI adds
 Bluetooth commands; the published student setup still uses USB. Instructors can read
 the [Bluetooth investigation and test procedure](docs/bluetooth.md).
 
+The development workshop workflow now reuses a Bluetooth connection across chat
+prompts and provides bounded movement helpers for the agent. Students still ask
+for ideas such as *"spin in a circle"*; they do not learn commands, identify their
+floor or arrange calibration targets. See [motion and validation notes](docs/workshop-motion.md).
+Faster turn speeds and physical accuracy across surfaces remain hardware test
+gates; no automatic camera calibration is required or enabled.
+
 ## Quick start (about 5 minutes)
 
 **You need:** a VEX AIM robot and its USB cable, a laptop, and one agent installed and signed in

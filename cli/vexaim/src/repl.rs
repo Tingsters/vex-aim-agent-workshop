@@ -182,6 +182,15 @@ where
         deadline: Instant,
         pred: impl Fn(&[u8]) -> bool,
     ) -> Result<(Vec<u8>, bool), Fail> {
+        self.read_observed(deadline, pred, |_| {}).await
+    }
+
+    async fn read_observed(
+        &mut self,
+        deadline: Instant,
+        pred: impl Fn(&[u8]) -> bool,
+        mut observe: impl FnMut(&[u8]),
+    ) -> Result<(Vec<u8>, bool), Fail> {
         let mut buf = Vec::new();
         loop {
             if pred(&buf) {
@@ -193,7 +202,10 @@ where
             let mut chunk = [0u8; 512];
             match self.conn.read_user(&mut chunk).await {
                 Ok(0) => {}
-                Ok(n) => buf.extend_from_slice(&chunk[..n]),
+                Ok(n) => {
+                    buf.extend_from_slice(&chunk[..n]);
+                    observe(&buf);
+                }
                 Err(e) if is_timeout(&e) => {}
                 Err(e) => {
                     return Err(transport_io(
@@ -232,13 +244,25 @@ where
 
     /// Execute code in raw-REPL mode. On timeout the program is interrupted (Ctrl-C).
     pub async fn exec(&mut self, code: &str, timeout: Duration) -> Result<ExecResult, Fail> {
+        self.exec_observed(code, timeout, |_| {}).await
+    }
+
+    /// Report progress while raw-REPL output is still arriving.
+    pub async fn exec_observed(
+        &mut self,
+        code: &str,
+        timeout: Duration,
+        observe: impl FnMut(&[u8]),
+    ) -> Result<ExecResult, Fail> {
         if !self.raw {
             self.sync().await?;
         }
         let t = Instant::now();
         self.write_all(code.as_bytes()).await?;
         self.write_all(&[CTRL_D]).await?;
-        let (buf, done) = self.read_until(t + timeout, complete_raw_frame).await?;
+        let (buf, done) = self
+            .read_observed(t + timeout, complete_raw_frame, observe)
+            .await?;
         if !done {
             // stop the running program, then return to a known state
             self.write_all(&[CTRL_C, CTRL_C]).await?;
@@ -260,6 +284,22 @@ where
             timed_out: false,
             elapsed: t.elapsed(),
         })
+    }
+
+    #[cfg(feature = "bluetooth")]
+    pub fn connection_mut(&mut self) -> &mut C {
+        &mut self.conn
+    }
+
+    #[cfg(feature = "bluetooth")]
+    pub fn connection(&self) -> &C {
+        &self.conn
+    }
+
+    /// A cancelled transaction may have left Python running or a partial prompt.
+    #[cfg(feature = "bluetooth")]
+    pub fn invalidate(&mut self) {
+        self.raw = false;
     }
 
     /// Leave raw mode so a human can use the normal `>>>` REPL afterwards.

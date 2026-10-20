@@ -33,6 +33,7 @@ check "dry run succeeds" I --home "$H1" --dry-run --from-dir "$ASSETS"
 check "install from local assets" I --home "$H1" --from-dir "$ASSETS" --no-doctor
 for d in .agents/skills/vex-aim .claude/skills/vex-aim; do
   [ -x "$H1/$d/bin/vexaim" ] && [ -f "$H1/$d/SKILL.md" ] && [ -f "$H1/$d/.vexaim-installed" ] && ok "installed $d" || bad "missing files in $d"
+  [ -f "$H1/$d/references/workshop.md" ] && ok "installed $d prompt/session guidance" || bad "missing workshop reference in $d"
 done
 check "installed binary runs" "$H1/.agents/skills/vex-aim/bin/vexaim" --version
 

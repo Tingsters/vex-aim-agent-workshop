@@ -1,6 +1,9 @@
 #[cfg(feature = "bluetooth")]
 mod bluetooth;
+mod motion;
 mod repl;
+#[cfg(feature = "bluetooth")]
+mod session;
 mod snap;
 
 use clap::{Parser, Subcommand, ValueEnum};
@@ -28,6 +31,9 @@ struct Cli {
     /// Exact Bluetooth robot name from `bluetooth scan` (for example AIM6518)
     #[arg(long, global = true, conflicts_with = "device")]
     name: Option<String>,
+    /// Reuse an agent-managed Bluetooth session; never reconnect or replay implicitly
+    #[arg(long, global = true, conflicts_with_all = ["device", "transport"])]
+    session: Option<String>,
     #[command(subcommand)]
     cmd: Cmd,
 }
@@ -52,6 +58,27 @@ const STOP_CODE: &str = "robot.stop_all_movement()\ntry:\n    robot.sound.stop()
 
 #[derive(Subcommand)]
 enum Cmd {
+    /// Agent-facing persistent Bluetooth connection management
+    Session {
+        #[command(subcommand)]
+        command: SessionCmd,
+    },
+    /// Bounded relative turn; speed defaults to the conservative 30 DPS until hardware validation
+    Turn {
+        #[arg(value_enum)]
+        direction: motion::Direction,
+        degrees: f64,
+        #[arg(long, default_value_t = 30.0)]
+        speed: f64,
+    },
+    /// Bounded move in millimeters; angle is robot-relative (0 forward, 90 right)
+    Move {
+        distance: f64,
+        #[arg(long, default_value_t = 0.0)]
+        angle: f64,
+        #[arg(long, default_value_t = 80.0)]
+        speed: f64,
+    },
     /// Bluetooth discovery and local credential management
     Bluetooth {
         #[command(subcommand)]
@@ -83,6 +110,21 @@ enum Cmd {
     },
 }
 
+#[derive(Subcommand)]
+enum SessionCmd {
+    /// Start or reuse a connection to the explicitly named robot (agent handles this)
+    Start,
+    /// Read cached connection status without rescanning or touching the robot
+    Status,
+    /// Stop, disconnect and close the selected session
+    Close,
+    #[command(hide = true)]
+    Serve {
+        #[arg(long)]
+        id: String,
+    },
+}
+
 fn out(cli_json: bool, v: serde_json::Value, human: impl FnOnce() -> String) {
     if cli_json {
         println!("{v}")
@@ -92,6 +134,14 @@ fn out(cli_json: bool, v: serde_json::Value, human: impl FnOnce() -> String) {
 }
 
 fn run(cli: &Cli) -> Result<i32, Fail> {
+    if cli.session.is_some() || matches!(cli.cmd, Cmd::Session { .. }) {
+        #[cfg(feature = "bluetooth")]
+        return session::run(cli);
+        #[cfg(not(feature = "bluetooth"))]
+        return Err(Fail::Bluetooth(
+            "Persistent sessions need a Bluetooth-enabled build.".into(),
+        ));
+    }
     let bluetooth =
         cli.transport == Transport::Bluetooth || matches!(cli.cmd, Cmd::Bluetooth { .. });
     if bluetooth {
@@ -111,6 +161,23 @@ fn run(cli: &Cli) -> Result<i32, Fail> {
         ));
     }
     match &cli.cmd {
+        Cmd::Session { .. } => unreachable!(),
+        Cmd::Turn {
+            direction,
+            degrees,
+            speed,
+        } => {
+            let source = motion::turn_source(*direction, *degrees, *speed)?;
+            run_exec(cli, &format!("{}{source}", motion::HELPERS), 23, true)
+        }
+        Cmd::Move {
+            distance,
+            angle,
+            speed,
+        } => {
+            let source = motion::move_source(*distance, *angle, *speed)?;
+            run_exec(cli, &format!("{}{source}", motion::HELPERS), 23, true)
+        }
         Cmd::Bluetooth { .. } => unreachable!(),
         Cmd::Doctor => doctor(cli),
         Cmd::Stop => {
@@ -357,6 +424,34 @@ mod tests {
             Cli::try_parse_from(["vexaim", "--name", "AIM6518", "--device", "0", "info"]).is_err()
         );
         assert!(Cli::try_parse_from(["vexaim", "bluetooth", "pair", "--pin", "1234"]).is_err());
+        assert!(
+            Cli::try_parse_from([
+                "vexaim",
+                "--session",
+                "aim-0000000000000000",
+                "--transport",
+                "usb",
+                "info"
+            ])
+            .is_err()
+        );
+        let turn = Cli::try_parse_from([
+            "vexaim",
+            "--session",
+            "aim-0000000000000000",
+            "turn",
+            "left",
+            "360",
+        ])
+        .unwrap();
+        assert!(matches!(
+            turn.cmd,
+            Cmd::Turn {
+                degrees: 360.0,
+                speed: 30.0,
+                ..
+            }
+        ));
     }
 
     #[test]
