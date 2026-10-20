@@ -44,14 +44,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell 5.1 integration failed' }
       - name: Check latest-stable Unix bootstrap
         if: runner.os != 'Windows'
-        run: sh install.sh --home "$PWD/dist/online-smoke" --agents codex
+        run: cat install.sh | sh -s -- --home "$PWD/dist/online-smoke" --agents codex
       - name: Check latest-stable Windows bootstrap
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          ./install.ps1 -TargetHome "$PWD/dist/online-smoke" -Agents codex
-          powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -TargetHome "$PWD/dist/online-ps5" -Agents codex
+          Get-Content -Raw install.ps1 | iex
+          powershell -NoProfile -ExecutionPolicy Bypass -Command 'Get-Content -Raw install.ps1 | iex'
           if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell 5.1 online install failed' }
+          if (-not (Test-Path "$HOME/.agents/skills/vex-aim-workshop/references/activities.md")) { throw 'Streamed installation did not install teaching references' }
       - name: shellcheck
         if: runner.os == 'Linux'
         run: |

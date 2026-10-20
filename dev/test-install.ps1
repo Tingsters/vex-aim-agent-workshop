@@ -41,6 +41,11 @@ try {
   $single=Join-Path $work 'single'
   Install $single @('-FromDir',$assets,'-Agents','claude')
   Check ((Test-Path "$single/.claude/skills/vex-aim-workshop/SKILL.md") -and -not (Test-Path "$single/.agents")) 'single-agent choice applies to both skills'
+  $streamed=Join-Path $work 'streamed home'
+  # ScriptBlock.Create, like irm | iex, has no source-file directory. This
+  # exercises downloading the complete teaching skill without a checkout.
+  & ([scriptblock]::Create((Get-Content -Raw (Join-Path $repo 'install.ps1')))) -TargetHome $streamed -FromDir $assets
+  Check ((Test-Path "$streamed/.agents/skills/vex-aim/bin/vexaim.exe") -and (Test-Path "$streamed/.claude/skills/vex-aim-workshop/references/activities.md")) 'streamed PowerShell installs binary and downloaded teaching references'
   $bad=Join-Path $work 'bad'
   Copy-Item -LiteralPath $assets -Destination $bad -Recurse
   Add-Content -LiteralPath (Join-Path $bad 'install.ps1') -Value '# tampered'

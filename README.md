@@ -14,15 +14,32 @@ Linux x86_64, Apple Silicon Mac or Intel Mac. USB and Bluetooth are supported.
 No Rust, Python packages, VEXcode, saved robot project or special Wi-Fi is needed.
 Your agent's model needs internet access; the robot does not need venue Wi-Fi.
 
-Paste into your agent:
+Paste the command for your computer into a terminal. No download, extraction
+or Git clone is needed first. This installs the CLI and **both skills**.
 
-> Clone https://github.com/Tingsters/vex-aim-agent-workshop and follow AGENTS.md
-> to install the workshop and the released vexaim CLI. Ask which connection I
-> want if I haven't specified USB or Bluetooth. Check the robot without moving
-> it and report its battery. Tell me before anything needs administrator access.
+**Windows x86_64 — PowerShell 5.1 or newer:**
+
+```powershell
+irm https://raw.githubusercontent.com/Tingsters/vex-aim-agent-workshop/main/install.ps1 | iex
+```
+
+**macOS — Apple Silicon or Intel (Terminal):**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Tingsters/vex-aim-agent-workshop/main/install.sh | sh
+```
+
+**Linux x86_64 — terminal:**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Tingsters/vex-aim-agent-workshop/main/install.sh | sh
+```
 
 The installer installs the latest stable CLI release with its matching basic
-skill, then adds this workshop's teaching skill. Start a **new agent session**
+skill, then adds this workshop's teaching skill. It verifies the released CLI
+installer and binary archive against SHA-256 checksums. Installation requires no
+administrator access and can finish while the robot is off. Linux USB setup may
+later need an approved udev rule. Start a **new agent session**
 after installation so both skills can be discovered. Then try:
 
 > Use the vex-aim-workshop skill. Make the robot's lights blue for two seconds.
@@ -44,7 +61,7 @@ The current turn default is conservative. Physical accuracy varies by surface;
 automatic camera-based movement correction is not enabled. Software CI does not
 prove hardware accuracy. [Current movement evidence](docs/workshop-motion.md).
 
-## Manual installation
+## Installer options and offline installation
 
 From a checkout, run:
 
@@ -67,8 +84,16 @@ Both skills are installed under `~/.agents/skills/` for Goose/Codex and
 Use `--agents claude` / `-Agents claude` for one agent, or `--dry-run` /
 `-DryRun` to preview. `--from-dir DIR` / `-FromDir DIR` accepts a downloaded CLI
 release's archives, installers, VERSION and SHA256SUMS. Installation can finish
-while the robot is off. Rerun to adopt the latest stable release; nothing updates
+while the robot is off. Rerun your computer's one-line command to adopt the
+latest stable release and current workshop skill; nothing updates
 itself during a workshop. Close robot sessions before updating.
+
+With the one-line installer, pass Unix options using `curl -fsSL
+<installer-URL> | sh -s -- --agents claude`, or PowerShell options using
+`& ([scriptblock]::Create((irm <installer-URL>))) -Agents claude`. Use the URL
+for your platform above. You can open that URL or download the script first
+to review it before running it. A downloaded workshop checkout plus the CLI
+release assets supports installation without internet access.
 
 `--uninstall` / `-Uninstall` removes the workshop skill only. The shared CLI and
 basic skill remain available for other projects. Build-from-source instructions

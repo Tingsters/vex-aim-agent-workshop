@@ -8,7 +8,11 @@ param([string]$Agents='all', [string]$FromDir='', [string]$BaseUrl='',
 $ErrorActionPreference='Stop'
 $Repo='https://github.com/Tingsters/vexaim-cli'
 $Marker='.vexaim-workshop-installed'
-$source=Join-Path $PSScriptRoot 'skill/vex-aim-workshop'
+$source=''
+if ($PSScriptRoot) {
+  $localSource=Join-Path $PSScriptRoot 'skill/vex-aim-workshop'
+  if (Test-Path (Join-Path $localSource 'SKILL.md')) { $source=$localSource }
+}
 function Remove-Within([string]$path,[string]$root) {
   $absolute=[IO.Path]::GetFullPath($path)
   $prefix=[IO.Path]::GetFullPath($root).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
@@ -34,11 +38,17 @@ foreach ($d in $destinations) {
   } elseif ((Test-Path $d) -and -not (Test-Path (Join-Path $d $Marker)) -and -not $Force) { throw "$d was not installed by this script; move it away or use -Force" }
 }
 if ($Uninstall) { Write-Host 'Shared vexaim CLI/basic skill left installed.'; exit 0 }
-if (-not (Test-Path (Join-Path $source 'SKILL.md'))) { throw 'missing workshop skill; run from a workshop checkout' }
 if ($DryRun) { Write-Host "Would install latest stable CLI/basic skill and workshop skill for $Agents under $TargetHome. No changes."; exit 0 }
 $temporary=Join-Path ([IO.Path]::GetTempPath()) ('vexaim-workshop-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temporary | Out-Null
 try {
+  if (-not $source) {
+    $workshopArchive=Join-Path $temporary 'workshop.zip'
+    Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/Tingsters/vex-aim-agent-workshop/archive/refs/heads/main.zip' -OutFile $workshopArchive
+    Expand-Archive -LiteralPath $workshopArchive -DestinationPath (Join-Path $temporary 'workshop')
+    $source=Join-Path $temporary 'workshop/vex-aim-agent-workshop-main/skill/vex-aim-workshop'
+    if (-not (Test-Path (Join-Path $source 'SKILL.md'))) { throw 'downloaded workshop is missing its teaching skill' }
+  }
   if ($FromDir) {
     Copy-Item (Join-Path $FromDir 'VERSION'),(Join-Path $FromDir 'SHA256SUMS'),(Join-Path $FromDir 'install.ps1') $temporary
   } else {

@@ -6,6 +6,23 @@ installs both skills using the latest stable CLI release. Students do not compil
 
 ## Before the event
 
+Give students the command for their operating system. No clone is needed.
+
+**Windows x86_64 (PowerShell 5.1+):**
+
+```powershell
+irm https://raw.githubusercontent.com/Tingsters/vex-aim-agent-workshop/main/install.ps1 | iex
+```
+
+**macOS (Apple Silicon or Intel), or Linux x86_64 (Terminal):**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Tingsters/vex-aim-agent-workshop/main/install.sh | sh
+```
+
+Both install the prebuilt CLI and both skills. The robot can be off. Students
+must start a new agent session afterward; the same command installs updates.
+
 1. Try the installer on each expected laptop type, then start a new agent session.
    Verify both vex-aim and vex-aim-workshop are discovered. A checkout alone does
    not update an installed executable.

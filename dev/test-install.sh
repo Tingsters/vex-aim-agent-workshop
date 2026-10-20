@@ -27,6 +27,15 @@ H2="$WORK/single"
 check install_to "$H2" --from-dir "$ASSETS" --agents claude
 check test -f "$H2/.claude/skills/vex-aim-workshop/SKILL.md"
 check test ! -e "$H2/.agents"
+STREAM="$WORK/streamed home"
+# stdin has no script directory: download the teaching references, not a copy
+# from the checkout or the caller's current working directory.
+# Keep the pipe to exercise the same invocation as curl | sh.
+# shellcheck disable=SC2002
+(cd "$WORK"; cat "$HERE/install.sh" | sh -s -- --home "$STREAM" --from-dir "$ASSETS")
+check test -x "$STREAM/.agents/skills/vex-aim/bin/vexaim"
+check test -f "$STREAM/.agents/skills/vex-aim-workshop/references/activities.md"
+check test -f "$STREAM/.claude/skills/vex-aim-workshop/SKILL.md"
 BAD="$WORK/bad"; cp -R "$ASSETS" "$BAD"
 printf '\n# tampered\n' >> "$BAD/install.sh"
 expect_fail install_to "$WORK/rejected" --from-dir "$BAD"
