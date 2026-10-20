@@ -30,6 +30,8 @@ check test ! -e "$H2/.agents"
 STREAM="$WORK/streamed home"
 # stdin has no script directory: download the teaching references, not a copy
 # from the checkout or the caller's current working directory.
+# Keep the pipe to exercise the same invocation as curl | sh.
+# shellcheck disable=SC2002
 (cd "$WORK"; cat "$HERE/install.sh" | sh -s -- --home "$STREAM" --from-dir "$ASSETS")
 check test -x "$STREAM/.agents/skills/vex-aim/bin/vexaim"
 check test -f "$STREAM/.agents/skills/vex-aim-workshop/references/activities.md"
