@@ -34,6 +34,9 @@ jobs:
       - name: Test CLI
         run: cargo test --locked --manifest-path cli/Cargo.toml
 
+      - name: Test release CLI session reuse across processes (simulated radio)
+        run: cargo test --locked --manifest-path cli/Cargo.toml -p vexaim packaged_cli_reuses_owner_across_processes -- --ignored
+
       - name: Test USB-only CLI and protocol validation
         run: |
           cargo test --locked --manifest-path cli/Cargo.toml -p vexaim --no-default-features

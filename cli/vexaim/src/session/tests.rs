@@ -59,7 +59,7 @@ async fn rig(
     let id = ipc::id_for(&name).unwrap();
     let mut listener = ipc::Listener::bind(&id).await.unwrap();
     let cache = Rc::new(RefCell::new(
-        json!({"ok":true,"state":"ready","busy":false,"name":name}),
+        json!({"ok":true,"protocol":PROTOCOL,"session":id,"state":"ready","busy":false,"name":name}),
     ));
     let busy = Rc::new(Cell::new(false));
     let (tx, rx) = mpsc::unbounded_channel();
@@ -249,4 +249,73 @@ async fn protocol_rejects_oversized_input_before_allocating_body() {
     let (mut writer, mut reader) = tokio::io::duplex(16);
     writer.write_u32((LIMIT + 1) as u32).await.unwrap();
     assert!(read_frame(&mut reader).await.is_err());
+}
+
+#[tokio::test(flavor = "current_thread")]
+#[ignore = "build the release CLI first; this launches real short-lived clients against a fake radio owner"]
+async fn packaged_cli_reuses_owner_across_processes() {
+    tokio::task::LocalSet::new()
+        .run_until(async {
+            let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap();
+            let binary = root.join("target/release").join(if cfg!(windows) {
+                "vexaim.exe"
+            } else {
+                "vexaim"
+            });
+            assert!(
+                binary.exists(),
+                "Build --release before running this integration test"
+            );
+            let (id, counters, owner, listener) = rig("external-clients").await;
+            let state = client(&id, &Request::Status, false, false).await.unwrap();
+            let name = state["name"].as_str().unwrap().to_string();
+            let commands = vec![
+                vec!["--name".to_string(), name, "session".into(), "start".into()],
+                vec!["--session".into(), id.clone(), "info".into()],
+                vec![
+                    "--session".into(),
+                    id.clone(),
+                    "turn".into(),
+                    "left".into(),
+                    "15".into(),
+                ],
+                vec![
+                    "--session".into(),
+                    id.clone(),
+                    "session".into(),
+                    "close".into(),
+                ],
+            ];
+            for args in commands {
+                let executable = binary.clone();
+                let output = tokio::task::spawn_blocking(move || {
+                    let mut command = Command::new(executable);
+                    command.arg("--json").args(args);
+                    #[cfg(windows)]
+                    {
+                        use std::os::windows::process::CommandExt;
+                        command.creation_flags(0x08000000);
+                    }
+                    command.output().unwrap()
+                })
+                .await
+                .unwrap();
+                assert!(
+                    output.status.success(),
+                    "{} {}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+                assert_eq!(result["ok"], true);
+            }
+            owner.await.unwrap();
+            assert_eq!(counters.calls.get(), 1); // only the requested turn reached the fake robot
+            assert_eq!(counters.closes.get(), 1);
+            listener.abort();
+            let _ = listener.await;
+        })
+        .await;
 }
