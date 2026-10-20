@@ -1,103 +1,59 @@
-name: ci
+name: workshop checks
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  build-test:
+  install:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest,  target: linux-x86_64,   exe: vexaim }
-          - { os: macos-14,       target: macos-arm64,    exe: vexaim }
-          - { os: macos-15-intel, target: macos-x86_64,   exe: vexaim }
-          - { os: windows-latest, target: windows-x86_64, exe: vexaim.exe }
+          - { os: ubuntu-latest, target: linux-x86_64 }
+          - { os: macos-14, target: macos-arm64 }
+          - { os: macos-15-intel, target: macos-x86_64 }
+          - { os: windows-latest, target: windows-x86_64 }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Linux build dependencies
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libudev-dev libdbus-1-dev pkg-config shellcheck
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Build
-        run: cargo build --locked --release --manifest-path cli/Cargo.toml
-
-      - name: Test CLI
-        run: cargo test --locked --manifest-path cli/Cargo.toml
-
-      - name: Test release CLI session reuse across processes (simulated radio)
-        run: cargo test --locked --manifest-path cli/Cargo.toml -p vexaim packaged_cli_reuses_owner_across_processes -- --ignored
-
-      - name: Test USB-only CLI and protocol validation
-        run: |
-          cargo test --locked --manifest-path cli/Cargo.toml -p vexaim --no-default-features
-          cargo test --locked --manifest-path cli/Cargo.toml -p vex-cdc
-          cargo test --locked --manifest-path cli/Cargo.toml -p btleplug --lib
-
-      - name: Test vendored discovery and port configuration
-        run: cargo test --locked --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features serial
-
-      - name: Test Bluetooth independently and alongside USB
-        run: |
-          cargo test --locked --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features bluetooth
-          cargo test --locked --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features serial,bluetooth
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Test instructor BLE probe (no hardware or credential access)
-        run: |
-          python -m pip install bleak==3.0.2 keyring==25.7.0
-          python -m unittest discover -s dev -p test_ble_feasibility.py -v
-
-      - name: Test robot motion helpers and independent benchmark evaluation (no hardware)
-        run: |
-          python -m unittest discover -s dev -p test_motion_helpers.py -v
-          python -m unittest discover -s dev -p test_motion_benchmark.py -v
-
-      - name: Test local camera registration spike (no photos or robot)
-        run: |
-          python -m pip install opencv-python-headless==4.13.0.92
-          python -m unittest discover -s dev -p test_turn_frames.py -v
-
-      - name: Test blocking adapter (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          cargo test --locked --manifest-path cli/Cargo.toml --features blocking-io
-          cargo test --locked --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features blocking-io
-
-      - name: Smoke test the binary
+      - name: Check teaching skill and documentation
+        run: python dev/check-workshop.py
+      - name: Download native published CLI assets
         shell: bash
-        run: cli/target/release/${{ matrix.exe }} --version
-
-      - name: shellcheck (Linux)
-        if: runner.os == 'Linux'
-        run: shellcheck -s sh install.sh scripts/package.sh dev/test-install.sh skill/vex-aim/linux/install-udev.sh
-
-      - name: Package and test the installer (macOS/Linux)
-        if: runner.os != 'Windows'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          sh scripts/package.sh ${{ matrix.target }} cli/target/release/${{ matrix.exe }} dist
-          sh dev/test-install.sh dist
-
-      - name: Package and test the installer (Windows)
+          gh release download --repo Tingsters/vexaim-cli --dir dist/cli-assets \
+            --pattern 'vexaim-${{ matrix.target }}*' --pattern VERSION \
+            --pattern SHA256SUMS --pattern install.sh --pattern install.ps1
+      - name: Test Unix installation and failure handling
+        if: runner.os != 'Windows'
+        run: sh dev/test-install.sh dist/cli-assets
+      - name: Test Windows PowerShell 7 and 5.1 installation
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Path dist -Force | Out-Null
-          Compress-Archive -Path cli/target/release/vexaim.exe -DestinationPath dist/vexaim-windows-x86_64.zip -Force
-          $h = (Get-FileHash -Algorithm SHA256 dist/vexaim-windows-x86_64.zip).Hash.ToLower()
-          "$h  vexaim-windows-x86_64.zip" | Set-Content -Path dist/SHA256SUMS
-          ./dev/test-install.ps1 -AssetsDir dist
-          powershell -NoProfile -ExecutionPolicy Bypass -File dev/test-install.ps1 -AssetsDir dist
-          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell installer tests failed" }
+          ./dev/test-install.ps1 -AssetsDir dist/cli-assets
+          powershell -NoProfile -ExecutionPolicy Bypass -File dev/test-install.ps1 -AssetsDir dist/cli-assets
+          if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell 5.1 integration failed' }
+      - name: Check latest-stable Unix bootstrap
+        if: runner.os != 'Windows'
+        run: sh install.sh --home "$PWD/dist/online-smoke" --agents codex
+      - name: Check latest-stable Windows bootstrap
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./install.ps1 -TargetHome "$PWD/dist/online-smoke" -Agents codex
+          powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -TargetHome "$PWD/dist/online-ps5" -Agents codex
+          if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell 5.1 online install failed' }
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck -s sh install.sh dev/test-install.sh

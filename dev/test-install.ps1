@@ -1,114 +1,73 @@
-<# Installer regression tests; no robot, administrator access, or Pester required.
-   Run in both Windows PowerShell 5.1 and PowerShell 7:
-   ./dev/test-install.ps1 -AssetsDir ./dist
-   Requires Rust only to build the deliberately obsolete/malformed test binary. #>
+<# Workshop installation integration tests. Needs complete native CLI release assets.
+   Run with both Windows PowerShell 5.1 and PowerShell 7. No Rust or robot. #>
 [CmdletBinding()]
 param([Parameter(Mandatory=$true)][string]$AssetsDir)
-$ErrorActionPreference = 'Stop'
-$repo = Split-Path $PSScriptRoot -Parent
-$assets = (Resolve-Path -LiteralPath $AssetsDir).Path
-$workRoot = Join-Path $repo 'cli/target/installer-tests'
-$work = Join-Path $workRoot ([guid]::NewGuid().ToString('N'))
-$shellExe = (Get-Process -Id $PID).Path
-$installer = Join-Path $repo 'install.ps1'
-$archive = 'vexaim-windows-x86_64.zip'
-$passed = 0
+$ErrorActionPreference='Stop'
+$repo=Split-Path $PSScriptRoot -Parent
+$assets=(Resolve-Path -LiteralPath $AssetsDir).Path
+$root=Join-Path $repo 'dist/workshop-tests'
+$work=Join-Path $root ([guid]::NewGuid().ToString('N'))
+$shell=(Get-Process -Id $PID).Path
+$passed=0
 New-Item -ItemType Directory -Path $work -Force | Out-Null
-
-function Assert-True([bool]$condition, [string]$description) {
-  if (-not $condition) { throw "FAIL: $description" }
-  $script:passed++
-  Write-Host "PASS: $description"
+function Check([bool]$condition,[string]$message) {
+  if (-not $condition) { throw "FAIL: $message" }
+  $script:passed++; Write-Host "PASS: $message"
 }
-
-function Invoke-Install([string]$destination, [string[]]$options, [string]$failure = '') {
-  $output = & $shellExe -NoProfile -ExecutionPolicy Bypass -File $installer -TargetHome $destination @options 2>&1
-  $code = $LASTEXITCODE
-  if ($failure) {
-    Assert-True ($code -ne 0 -and ($output -join "`n") -match $failure) "refused: $failure"
-  } else {
-    if ($code -ne 0) { throw "installer failed: $($output -join "`n")" }
-  }
+function Install([string]$target,[string[]]$options,[string]$failure='') {
+  $previous=$ErrorActionPreference
+  try {
+    $ErrorActionPreference='Continue'
+    $output=& $shell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'install.ps1') -TargetHome $target @options 2>&1
+    $code=$LASTEXITCODE
+  } finally { $ErrorActionPreference=$previous }
+  if ($failure) { Check ($code -ne 0 -and ($output -join "`n") -match $failure) "refused: $failure" }
+  elseif ($code -ne 0) { throw "installation failed: $($output -join "`n")" }
 }
-
-function Make-FixtureAssets([string]$directory) {
-  New-Item -ItemType Directory -Path $directory -Force | Out-Null
-  Compress-Archive -LiteralPath (Join-Path $work 'vexaim.exe') -DestinationPath (Join-Path $directory $archive) -Force
-  $hash = (Get-FileHash -LiteralPath (Join-Path $directory $archive) -Algorithm SHA256).Hash.ToLower()
-  "$hash  $archive" | Set-Content -LiteralPath (Join-Path $directory 'SHA256SUMS') -Encoding ASCII
-}
-
 try {
-  $allHome = Join-Path $work 'all agents'
-  New-Item -ItemType Directory -Path $allHome | Out-Null
-  Invoke-Install $allHome @('-FromDir', $assets, '-DryRun')
-  Assert-True (@(Get-ChildItem -LiteralPath $allHome -Force).Count -eq 0) 'dry run writes nothing'
-  Invoke-Install $allHome @('-FromDir', $assets, '-NoDoctor')
-  foreach ($agent in @('.agents', '.claude')) {
-    $skill = Join-Path $allHome "$agent/skills/vex-aim"
-    Assert-True ((Test-Path "$skill/bin/vexaim.exe") -and (Test-Path "$skill/SKILL.md")) "installed $agent skill and executable"
-    Assert-True ((Test-Path "$skill/references/workshop.md") -and (Select-String -LiteralPath "$skill/SKILL.md" -SimpleMatch 'references/workshop.md' -Quiet)) "installed $agent prompt/session guidance with the tool"
-    $version = & "$skill/bin/vexaim.exe" --version
-    Assert-True ($LASTEXITCODE -eq 0 -and "$version" -match '^vexaim (\d+\.\d+\.\d+)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$' -and [version]$Matches[1] -ge [version]'0.1.1') "packaged executable runs for $agent"
+  $target=Join-Path $work 'home with spaces'
+  Install $target @('-DryRun','-FromDir','not-a-real-directory')
+  Check (-not (Test-Path $target)) 'dry run writes nothing and needs no download'
+  Install $target @('-FromDir',$assets)
+  foreach ($agent in @('.agents','.claude')) {
+    $base=Join-Path $target "$agent/skills"
+    Check ((Test-Path "$base/vex-aim/SKILL.md") -and (Test-Path "$base/vex-aim/bin/vexaim.exe")) "$agent has released CLI/basic skill"
+    Check ((Test-Path "$base/vex-aim-workshop/SKILL.md") -and -not (Test-Path "$base/vex-aim-workshop/bin")) "$agent has a separate teaching skill"
+    $version=& "$base/vex-aim/bin/vexaim.exe" --version
+    Check ("$version" -eq "vexaim $((Get-Content -Raw (Join-Path $assets 'VERSION')).Trim())") "$agent executable matches release"
   }
-  Invoke-Install $allHome @('-FromDir', $assets, '-NoDoctor')
-  Assert-True (Test-Path "$allHome/.agents/skills/vex-aim/.vexaim-installed") 'upgrade is idempotent'
-
-  $singleHome = Join-Path $work 'single'
-  Invoke-Install $singleHome @('-FromDir', $assets, '-Agents', 'claude', '-NoDoctor')
-  Assert-True ((Test-Path "$singleHome/.claude/skills/vex-aim") -and -not (Test-Path "$singleHome/.agents")) 'single-agent selection'
-
-  $badAssets = Join-Path $work 'bad-checksum'
-  New-Item -ItemType Directory -Path $badAssets | Out-Null
-  Copy-Item -LiteralPath (Join-Path $assets $archive), (Join-Path $assets 'SHA256SUMS') -Destination $badAssets
-  $stream = [IO.File]::OpenWrite((Join-Path $badAssets $archive))
-  try { $null = $stream.Seek(0, [IO.SeekOrigin]::End); $stream.WriteByte(42) } finally { $stream.Dispose() }
-  $rejectedHome = Join-Path $work 'rejected'
-  Invoke-Install $rejectedHome @('-FromDir', $badAssets, '-NoDoctor') 'checksum mismatch'
-  Assert-True (-not (Test-Path $rejectedHome)) 'checksum failure writes no skill folders'
-  Copy-Item -LiteralPath (Join-Path $assets $archive) -Destination $badAssets -Force
-  '' | Set-Content -LiteralPath (Join-Path $badAssets 'SHA256SUMS')
-  Invoke-Install $rejectedHome @('-FromDir', $badAssets, '-NoDoctor') 'not listed in SHA256SUMS'
-
-  & rustc (Join-Path $PSScriptRoot 'installer-fixture.rs') -o (Join-Path $work 'vexaim.exe')
-  if ($LASTEXITCODE -ne 0) { throw 'could not build the installer failure fixture' }
-  $oldAssets = Join-Path $work 'old-version'
-  Make-FixtureAssets $oldAssets
-  $installedExe = Join-Path $allHome '.agents/skills/vex-aim/bin/vexaim.exe'
-  $before = (Get-FileHash -LiteralPath $installedExe).Hash
-  Invoke-Install $allHome @('-FromDir', $oldAssets, '-NoDoctor') '0.1.1 or newer is required'
-  Assert-True ((Get-FileHash -LiteralPath $installedExe).Hash -eq $before) 'obsolete release preserves installed executable'
-  $env:VEXAIM_FIXTURE_VERSION = 'not-a-version'
-  Invoke-Install $rejectedHome @('-FromDir', $oldAssets, '-NoDoctor') 'did not return a supported version'
-  $env:VEXAIM_FIXTURE_VERSION = '0.1.1'
-  $env:VEXAIM_FIXTURE_FAIL = '1'
-  Invoke-Install $rejectedHome @('-FromDir', $oldAssets, '-NoDoctor') 'did not return a supported version'
-  Remove-Item Env:VEXAIM_FIXTURE_VERSION, Env:VEXAIM_FIXTURE_FAIL
-
-  $env:VEXAIM_FIXTURE_VERSION = '0.2.0-dev'
-  $developmentHome = Join-Path $work 'development'
-  Invoke-Install $developmentHome @('-FromDir', $oldAssets, '-Agents', 'codex', '-NoDoctor')
-  Assert-True (Test-Path "$developmentHome/.agents/skills/vex-aim/bin/vexaim.exe") 'development SemVer is accepted'
-  $env:VEXAIM_FIXTURE_VERSION = '0.1.0-dev'
-  Invoke-Install $allHome @('-FromDir', $oldAssets, '-NoDoctor') '0.1.1 or newer is required'
-  Remove-Item Env:VEXAIM_FIXTURE_VERSION
-
-  $foreignHome = Join-Path $work 'foreign'
-  $foreignSkill = Join-Path $foreignHome '.agents/skills/vex-aim'
-  New-Item -ItemType Directory -Path $foreignSkill -Force | Out-Null
-  'keep' | Set-Content -LiteralPath (Join-Path $foreignSkill 'SKILL.md')
-  Invoke-Install $foreignHome @('-FromDir', $assets, '-Agents', 'codex', '-NoDoctor') 'not installed by this script'
-  Invoke-Install $foreignHome @('-Uninstall')
-  Assert-True ((Get-Content -LiteralPath (Join-Path $foreignSkill 'SKILL.md')) -eq 'keep') 'foreign skill survives install and uninstall'
-  New-Item -ItemType Directory -Path "$allHome/.agents/skills/other" -Force | Out-Null
-  Invoke-Install $allHome @('-Uninstall')
-  Assert-True (-not (Test-Path "$allHome/.agents/skills/vex-aim") -and -not (Test-Path "$allHome/.claude/skills/vex-aim")) 'uninstall removes both installed skills'
-  Assert-True (Test-Path "$allHome/.agents/skills/other") 'uninstall preserves unrelated skills'
-  Write-Host "$passed assertions passed ($($PSVersionTable.PSVersion))"
+  Install $target @('-FromDir',$assets)
+  Check (Test-Path "$target/.agents/skills/vex-aim-workshop/.vexaim-workshop-installed") 'repeat installation works'
+  $single=Join-Path $work 'single'
+  Install $single @('-FromDir',$assets,'-Agents','claude')
+  Check ((Test-Path "$single/.claude/skills/vex-aim-workshop/SKILL.md") -and -not (Test-Path "$single/.agents")) 'single-agent choice applies to both skills'
+  $bad=Join-Path $work 'bad'
+  Copy-Item -LiteralPath $assets -Destination $bad -Recurse
+  Add-Content -LiteralPath (Join-Path $bad 'install.ps1') -Value '# tampered'
+  $rejected=Join-Path $work 'rejected'
+  Install $rejected @('-FromDir',$bad) 'installer checksum mismatch'
+  Check (-not (Test-Path $rejected)) 'bad installer creates neither skill'
+  Copy-Item -LiteralPath (Join-Path $assets 'install.ps1') -Destination $bad -Force
+  $stream=[IO.File]::OpenWrite((Join-Path $bad 'vexaim-windows-x86_64.zip'))
+  try { $null=$stream.Seek(0,[IO.SeekOrigin]::End); $stream.WriteByte(42) } finally { $stream.Dispose() }
+  Install $rejected @('-FromDir',$bad) 'CLI installation failed|checksum mismatch'
+  Check (-not (Test-Path "$rejected/.agents/skills/vex-aim-workshop")) 'failed CLI install never installs teaching skill'
+  $foreign=Join-Path $work 'foreign'
+  New-Item -ItemType Directory -Path "$foreign/.agents/skills/vex-aim-workshop" -Force | Out-Null
+  'keep' | Set-Content "$foreign/.agents/skills/vex-aim-workshop/SKILL.md"
+  Install $foreign @('-FromDir',$assets) 'not installed by this script'
+  Install $foreign @('-Uninstall')
+  Check ((Get-Content "$foreign/.agents/skills/vex-aim-workshop/SKILL.md") -eq 'keep') 'unmarked teaching skill survives install/uninstall'
+  Install $target @('-Uninstall','-DryRun')
+  Check (Test-Path "$target/.agents/skills/vex-aim-workshop/SKILL.md") 'uninstall dry run preserves teaching skill'
+  Install $target @('-Uninstall')
+  foreach ($agent in @('.agents','.claude')) {
+    Check (-not (Test-Path "$target/$agent/skills/vex-aim-workshop")) "$agent teaching skill removed"
+    Check (Test-Path "$target/$agent/skills/vex-aim/bin/vexaim.exe") "$agent shared CLI retained"
+  }
+  Write-Host "$passed workshop assertions passed ($($PSVersionTable.PSVersion))"
 } finally {
-  Remove-Item Env:VEXAIM_FIXTURE_VERSION, Env:VEXAIM_FIXTURE_FAIL -ErrorAction SilentlyContinue
-  $absolute = [IO.Path]::GetFullPath($work)
-  $parent = [IO.Path]::GetFullPath($workRoot).TrimEnd('\') + '\'
-  if (-not $absolute.StartsWith($parent, [StringComparison]::OrdinalIgnoreCase)) { throw "unexpected test path: $absolute" }
+  $absolute=[IO.Path]::GetFullPath($work)
+  if (-not $absolute.StartsWith([IO.Path]::GetFullPath($root).TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'unexpected test cleanup path' }
   Remove-Item -LiteralPath $absolute -Recurse -Force
 }
