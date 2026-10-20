@@ -99,6 +99,12 @@ async fn connection_owner_is_reused_and_busy_motion_is_never_queued() {
     tokio::task::LocalSet::new()
         .run_until(async {
             let (id, counters, owner, listener) = rig("reuse").await;
+            let status = client(&id, &Request::Status, false, false).await.unwrap();
+            assert!(
+                guard_one_shot(status["name"].as_str().unwrap())
+                    .await
+                    .is_err()
+            );
             let turn = Request::Turn {
                 left: true,
                 degrees: 90.0,

@@ -3,6 +3,7 @@ use crate::repl::Fail;
 use clap::ValueEnum;
 
 pub const HELPERS: &str = include_str!("motion.py");
+#[cfg(feature = "bluetooth")]
 pub const EVENT_PREFIX: &str = "__VEXAIM_EVENT__";
 
 #[derive(Clone, Copy, Debug, ValueEnum)]

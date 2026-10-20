@@ -129,6 +129,11 @@ Enable a future automatic correction only after independent degree-level tests,
 with no placed targets, extra calibration movements or downloads delaying normal
 commands. Otherwise retain normal motion control. Keep all photos/reports local.
 
+The prototype was also run on existing local AIM photographs. Controller-to-spinner
+frames had no consistent feature matches. Two spinner captures produced 149
+inliers, but they covered only 11.3% of the image and were rejected as too localized.
+These are useful rejection controls, not turn-calibration or freshness evidence.
+
 Primary references: [VEX motion](https://api.vex.com/aim/home/python/Motion.html),
 [inertial initialization](https://api.vex.com/aim/home/python/Inertial.html),
 [on-robot vision](https://api.vex.com/aim/home/python/AI_Vision.html),

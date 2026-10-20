@@ -8,11 +8,14 @@ pub fn valid_id(id: &str) -> bool {
 }
 
 pub fn id_for(name: &str) -> Result<String, Fail> {
-    use std::hash::{Hash, Hasher};
-    let mut hash = std::collections::hash_map::DefaultHasher::new();
-    user_identity().map_err(failure)?.hash(&mut hash);
-    name.hash(&mut hash);
-    Ok(format!("aim-{:016x}", hash.finish()))
+    // FNV-1a has a fixed definition across Rust versions. This is a namespace,
+    // not authentication; OS permissions supply the access boundary.
+    let user = user_identity().map_err(failure)?;
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in user.bytes().chain(Some(0)).chain(name.bytes()) {
+        hash = (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3);
+    }
+    Ok(format!("aim-{hash:016x}"))
 }
 
 #[cfg(unix)]

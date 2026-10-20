@@ -98,7 +98,7 @@ enum Cmd {
         #[arg(long)]
         no_preamble: bool,
     },
-    /// Emergency stop: interrupt the running program, stop wheels and sound
+    /// Request interruption and stop wheels/sound; needs a working link
     Stop,
     /// Battery, heading, position as JSON
     Info,
