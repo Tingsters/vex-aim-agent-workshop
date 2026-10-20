@@ -1,9 +1,11 @@
 #!/bin/sh
-# Install latest stable vexaim/basic skill, then the local workshop teaching skill.
+# Install latest stable vexaim/basic skill and the workshop teaching skill.
 # --agents all|goose|codex|claude --home DIR --from-dir RELEASE_ASSETS
 # --base-url URL --dry-run --force --udev --uninstall (workshop skill only)
 set -eu
-HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+HERE=''; SOURCE=''
+if [ -f "$0" ]; then HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd); fi
+if [ -n "$HERE" ] && [ -f "$HERE/skill/vex-aim-workshop/SKILL.md" ]; then SOURCE=$HERE/skill/vex-aim-workshop; fi
 REPO=https://github.com/Tingsters/vexaim-cli
 AGENTS=all; TARGET_HOME=$HOME; FROM_DIR=''; BASE_URL=''; DRY=0; FORCE=0; UDEV=0; UNINSTALL=0
 MARKER=.vexaim-workshop-installed
@@ -16,7 +18,7 @@ while [ $# -gt 0 ]; do
       shift 2 ;;
     --dry-run) DRY=1; shift ;; --force) FORCE=1; shift ;; --udev) UDEV=1; shift ;;
     --uninstall) UNINSTALL=1; shift ;; --no-doctor) shift ;;
-    -h|--help) sed -n '2,4p' "$0"; exit 0 ;; *) die "unknown option: $1" ;;
+    -h|--help) printf '%s\n' 'Install vexaim and both workshop skills.' '--agents all|goose|codex|claude --home DIR --from-dir RELEASE_ASSETS' '--base-url URL --dry-run --force --udev --uninstall'; exit 0 ;; *) die "unknown option: $1" ;;
   esac
 done
 USE_AGENTS=0; USE_CLAUDE=0
@@ -37,7 +39,6 @@ for d do
   elif [ -e "$d" ] && [ ! -f "$d/$MARKER" ] && [ "$FORCE" -eq 0 ]; then die "$d was not installed by this script; use --force"; fi
 done
 [ "$UNINSTALL" -eq 0 ] || { printf 'Shared vexaim CLI/basic skill left installed.\n'; exit 0; }
-[ -f "$HERE/skill/vex-aim-workshop/SKILL.md" ] || die 'missing workshop skill; use a workshop checkout'
 [ "$DRY" -eq 0 ] || { printf 'Would install latest stable CLI/basic skill and workshop skill. No changes.\n'; exit 0; }
 TMP=$(mktemp -d); trap 'rm -rf -- "$TMP"' EXIT INT TERM
 fetch() {
@@ -45,6 +46,15 @@ fetch() {
   elif command -v wget >/dev/null 2>&1; then wget -q -O "$2" "$1"
   else die 'need curl or wget'; fi
 }
+if [ -z "$SOURCE" ]; then
+  # One archive supplies a consistent snapshot of all teaching references. It
+  # contains no executable; the CLI still comes from a checksummed release.
+  fetch 'https://github.com/Tingsters/vex-aim-agent-workshop/archive/refs/heads/main.tar.gz' "$TMP/workshop.tar.gz" || die 'workshop download failed; retry or use a checkout'
+  mkdir "$TMP/workshop"
+  tar -xzf "$TMP/workshop.tar.gz" -C "$TMP/workshop" --strip-components=1
+  SOURCE=$TMP/workshop/skill/vex-aim-workshop
+  [ -f "$SOURCE/SKILL.md" ] || die 'downloaded workshop is missing its teaching skill'
+fi
 if [ -n "$FROM_DIR" ]; then
   cp "$FROM_DIR/VERSION" "$FROM_DIR/SHA256SUMS" "$FROM_DIR/install.sh" "$TMP/"
 else
@@ -75,7 +85,7 @@ install_cli || die 'CLI installation failed; workshop skill was not installed'
 for d do
   stage=$d.stage-$$; backup=$d.backup-$$
   if [ -e "$stage" ] || [ -e "$backup" ]; then die 'staging folder already exists'; fi
-  cp -R "$HERE/skill/vex-aim-workshop" "$stage"
+  cp -R "$SOURCE" "$stage"
   printf 'workshop; vexaim %s\n' "$VERSION" > "$stage/$MARKER"
   if [ -e "$d" ]; then mv -- "$d" "$backup"; fi
   if ! mv -- "$stage" "$d"; then

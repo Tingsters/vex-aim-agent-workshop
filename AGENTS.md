@@ -7,14 +7,18 @@ need Rust, Python packages, VEXcode or a saved robot project.
 
 ## Install
 
-1. Work from this repository root. Check the OS and architecture. Supported
+1. Check the OS and architecture. Supported
    binaries are Windows x86_64, Linux x86_64, macOS Apple Silicon and macOS Intel.
-2. Run `sh install.sh` on macOS/Linux, or
-   `powershell -ExecutionPolicy Bypass -File install.ps1` on Windows. Default
+2. No checkout is needed: on macOS/Linux run
+   `curl -fsSL https://raw.githubusercontent.com/Tingsters/vex-aim-agent-workshop/main/install.sh | sh`.
+   On Windows PowerShell 5.1 or newer run
+   `irm https://raw.githubusercontent.com/Tingsters/vex-aim-agent-workshop/main/install.ps1 | iex`.
+   From a checkout, `sh install.sh` or
+   `powershell -ExecutionPolicy Bypass -File install.ps1` also works. Default
    agent selection is all (Goose/Codex and Claude). Select one only if requested.
 3. The installer resolves the latest stable CLI release, verifies its installer,
-   installs its matching executable/basic skill, then installs the local teaching
-   skill. No robot is required during file installation. Never silently build
+   installs its matching executable/basic skill, then installs the teaching
+   skill (downloaded with all its references when streamed). No robot is required during file installation. Never silently build
    from source when a download fails; see docs/troubleshooting.md.
 4. Remember the exact `Tool:` path. The executable is inside vex-aim/bin, not
    vex-aim-workshop. Skills are under ~/.agents/skills and ~/.claude/skills.
