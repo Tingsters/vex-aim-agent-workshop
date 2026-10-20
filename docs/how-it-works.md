@@ -27,7 +27,9 @@ The robot runs MicroPython with the `vex` and `aim` modules. Typing Python into 
 - **`doctor`** checks: robot detected, both ports found, ports openable, REPL answers.
 
 - **Windows** uses a different I/O adapter than macOS/Linux (the upstream one does not compile there); see
-  `cli/vendor/README.md` and `docs/hardware-notes.md`.
+  `cli/vendor/README.md` and `docs/hardware-notes.md`. Starting with 0.1.1, every Windows AIM user-port
+  connection explicitly asserts DTR before creating its separate read/write handles. Without DTR the
+  AIM REPL stays silent even though discovery and port opening succeed.
 
 ## Things worth knowing (verified on real hardware, Linux)
 

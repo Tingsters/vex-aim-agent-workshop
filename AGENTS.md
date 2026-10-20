@@ -28,7 +28,7 @@ Run `uname -sm` (macOS/Linux) or check `$env:OS` / `$PSVersionTable` (Windows). 
 |---|---|---|
 | Linux x86_64 | `sh install.sh` | tested with a real robot |
 | macOS (Apple Silicon or Intel) | `sh install.sh` | built by CI, **not yet tested** with a robot (the serial layer needed a Windows fix, see `cli/vendor/README.md`) |
-| Windows x86_64 | `powershell -ExecutionPolicy Bypass -File install.ps1` | built by CI, **not yet tested** with a robot (the serial layer needed a Windows fix, see `cli/vendor/README.md`) |
+| Windows x86_64 | `powershell -ExecutionPolicy Bypass -File install.ps1` | requires **vexaim 0.1.1+** for DTR initialization; see `docs/hardware-notes.md` for Windows serial verification. Camera/actuators remain untested on Windows. |
 
 On other platforms use `--from-source` (macOS/Linux) / `-FromSource` (Windows); that needs Rust, so ask first.
 
@@ -104,6 +104,12 @@ switched on, wait ~30 seconds, and run it again with the path from the installer
 (Windows: `& "<Tool path>" doctor`, where the path ends in `vexaim.exe`.) You want `verdict: ready` and a
 battery percentage. Every failed check prints a `fix:` line; apply it or relay it.
 
+On Windows, verify `<Tool path> --version` is **0.1.1 or newer**. Version 0.1.0 opens the COM ports but
+leaves DTR low and the Python REPL silent. Update the executable and skill together; a new source checkout
+alone does not update the installed tool. If the installer rejects an obsolete release, relay that to the
+instructor instead of repeatedly rebooting or installing a different USB driver. Instructors can use a
+corrected local package with `-FromDir`, or `-FromSource` with an existing Rust/MSVC toolchain.
+
 Then read the battery and state with `<Tool path> info`, which prints one line of JSON such as
 `{"battery_pct": 100, "heading": 125.4, "x_mm": 18, "y_mm": 45, "stopped": true}`, and report the battery to the
 student. **Do not run robot commands that move it** at this stage.
@@ -116,7 +122,10 @@ student. **Do not run robot commands that move it** at this stage.
    computer (no hub or dock), unplug and re-plug.
 2. Wait about 30 seconds (on Linux without the udev rule the first failure after plugging in is normal) and run
    `doctor` again. **Try at most 3 times**, then stop and hand back to the student.
-3. If the robot is visible to the OS but `doctor` fails, read the `fix:` lines and `docs/troubleshooting.md`. A
+3. If the robot is visible to the OS but `doctor` fails, read the `fix:` lines and `docs/troubleshooting.md`.
+   On Windows use `Get-CimInstance Win32_SerialPort` to inspect USB `VID_2888&PID_0700`: `MI_00` is system,
+   `MI_04` is user; COM-number order does not determine their roles. `vexaim stop` requires a working REPL
+   and cannot fix failed initialization. A
    sandboxed agent (for example Goose installed as a Flatpak) cannot see USB devices at all; use a non-sandboxed
    install of the agent.
 4. **Never invent a battery level.** If you could not read one, say so plainly, say what the diagnostic printed,

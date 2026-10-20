@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Installs the `vex-aim` agent skill and the `vexaim` robot tool (Windows).  EXPERIMENTAL: not yet tested on real Windows hardware.
+  Installs the `vex-aim` agent skill and the `vexaim` robot tool (Windows).
 
 .DESCRIPTION
   powershell -ExecutionPolicy Bypass -File install.ps1                 # Goose, Codex, Claude Code (user-level)
@@ -28,6 +28,7 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $Marker = ".vexaim-installed"
+$MinimumVersion = [version]"0.1.1"  # 0.1.0 leaves DTR low: Windows opens the port but gets no REPL.
 $SkillSrc = Join-Path $PSScriptRoot "skill\vex-aim"
 
 function Say($m)  { Write-Host "==> $m" }
@@ -49,11 +50,19 @@ foreach ($a in ($Agents -split ",")) {
 }
 $wantDirs = $wantDirs | Select-Object -Unique
 
+function Remove-SkillFolder([string]$path) {
+  # Only delete one of the two resolved skill destinations under the selected home.
+  $absolute = [IO.Path]::GetFullPath($path)
+  $allowed = @([IO.Path]::GetFullPath($agentsDir), [IO.Path]::GetFullPath($claudeDir))
+  if ($absolute -notin $allowed) { Die "refusing to remove unexpected path: $absolute" }
+  Remove-Item -LiteralPath $absolute -Recurse -Force
+}
+
 # --- uninstall ---------------------------------------------------------------------------
 if ($Uninstall) {
   foreach ($d in @($agentsDir, $claudeDir)) {
     if (Test-Path (Join-Path $d $Marker)) {
-      if ($DryRun) { Say "would remove $d" } else { Remove-Item -Recurse -Force $d; Say "removed $d" }
+      if ($DryRun) { Say "would remove $d" } else { Remove-SkillFolder $d; Say "removed $d" }
     } elseif (Test-Path $d) { Warn "$d exists but was not installed by this script: left alone" }
   }
   exit 0
@@ -91,7 +100,7 @@ try {
   function Build-FromSource {
     if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { Die "cargo not found. Install Rust from https://rustup.rs (ask the student first), then re-run with -FromSource" }
     Say "building from source (a few minutes the first time)"
-    & cargo build --release --manifest-path (Join-Path $PSScriptRoot "cli\Cargo.toml")
+    & cargo build --locked --release --manifest-path (Join-Path $PSScriptRoot "cli\Cargo.toml")
     if ($LASTEXITCODE -ne 0) { Die "build failed" }
     Copy-Item (Join-Path $PSScriptRoot "cli\target\release\vexaim.exe") (Join-Path $Tmp "vexaim.exe")
   }
@@ -111,7 +120,11 @@ try {
   }
 
   $exe = Join-Path $Tmp "vexaim.exe"
-  try { $ver = & $exe --version } catch { Die "the vexaim binary does not run on this machine (blocked by SmartScreen/antivirus/policy? see docs/troubleshooting.md)" }
+  try { $ver = & $exe --version; $versionExit = $LASTEXITCODE } catch { Die "the vexaim binary does not run on this machine (blocked by SmartScreen/antivirus/policy? see docs/troubleshooting.md)" }
+  if ($versionExit -ne 0 -or "$ver" -notmatch '^vexaim (\d+\.\d+\.\d+)$') { Die "the vexaim binary did not return a supported version: $ver" }
+  if ([version]$Matches[1] -lt $MinimumVersion) {
+    Die "vexaim $MinimumVersion or newer is required on Windows: 0.1.0 has a DTR bug that leaves the Python REPL silent. No skill folders changed. Use the corrected release, or -FromSource with an existing Rust/MSVC toolchain."
+  }
   Say "$ver runs"
 
   # --- install ---------------------------------------------------------------------------
@@ -120,7 +133,7 @@ try {
     if ((Test-Path $d) -and -not (Test-Path (Join-Path $d $Marker)) -and -not $Force) {
       Die "$d already exists and was not installed by this script. Move it away or re-run with -Force"
     }
-    if (Test-Path $d) { Remove-Item -Recurse -Force $d }
+    if (Test-Path $d) { Remove-SkillFolder $d }
     New-Item -ItemType Directory -Path (Join-Path $d "bin") -Force | Out-Null
     Copy-Item -Recurse -Force (Join-Path $SkillSrc "*") $d
     Copy-Item $exe (Join-Path $d "bin\vexaim.exe")
@@ -138,6 +151,11 @@ try {
   Say "DONE. Tool: $(Join-Path $first 'bin\vexaim.exe')"
   Say "NEXT: start a NEW session of your agent (Goose / Codex / Claude Code) so it loads the vex-aim skill"
 } finally {
-  Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
+  $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+  $tempPath = [IO.Path]::GetFullPath($Tmp)
+  if ($tempPath.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -and
+      [IO.Path]::GetFileName($tempPath) -match '^vexaim-install-[a-f0-9]{32}$') {
+    Remove-Item -LiteralPath $tempPath -Recurse -Force -ErrorAction SilentlyContinue
+  }
 }
 exit 0

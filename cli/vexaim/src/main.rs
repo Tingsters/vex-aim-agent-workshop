@@ -136,9 +136,11 @@ fn doctor(cli: &Cli) -> Result<i32, Fail> {
             format!("system={} user={}", d.system_port().port_info.port_name, d.user_port().map(|u| u.port_info.port_name.clone()).unwrap_or("none".into())),
             "Re-plug the robot. If it persists, the USB interface layout is unexpected: report it.");
     }
-    if let Ok(dev) = repl::pick(devs.clone(), cli.device) {
-        match Repl::open(&dev) {
-            Err(e) => add("open-ports", false, e.to_string(), "Linux: run linux/install-udev.sh once and re-plug; Windows/macOS: close VEXcode/other serial tools."),
+    let os = std::env::consts::OS;
+    match repl::pick(devs, cli.device) {
+        Err(e) => add("device-selection", false, e.to_string(), "Choose a listed --device N when several robots are connected; check that the selected robot is plugged in."),
+        Ok(dev) => match Repl::open(&dev) {
+            Err(e) => add("open-ports", false, e.to_string(), repl::open_hint(os)),
             Ok(mut r) => {
                 add("open-ports", true, "opened".into(), "");
                 let res = smol::block_on(async {
@@ -147,12 +149,16 @@ fn doctor(cli: &Cli) -> Result<i32, Fail> {
                     x
                 });
                 match res {
-                    Ok(x) if x.stderr.is_empty() && !x.timed_out => add("repl", true, x.stdout.trim().to_string(), ""),
-                    Ok(x) => add("repl", false, format!("{}{}", x.stdout, x.stderr), "Press the robot's stop button / reboot it, then retry."),
-                    Err(e) => add("repl", false, e.to_string(), "Wait 30 s after plugging in (Linux ModemManager), then retry."),
+                    Ok(x) => match validate_status(&x) {
+                        Ok(()) => add("repl", true, x.stdout.trim().to_string(), ""),
+                        Err(reason) => add("repl", false,
+                            format!("{reason}; stdout={:?}; stderr={:?}", x.stdout, x.stderr),
+                            repl::repl_hint(os)),
+                    },
+                    Err(e) => add("repl", false, e.to_string(), repl::repl_hint(os)),
                 }
             }
-        }
+        },
     }
     let verdict = if ready { "ready" } else { "not ready" };
     if cli.json {
@@ -165,6 +171,61 @@ fn doctor(cli: &Cli) -> Result<i32, Fail> {
         println!("verdict: {verdict}");
     }
     Ok(if ready { 0 } else { 1 })
+}
+
+fn validate_status(result: &repl::ExecResult) -> Result<(), &'static str> {
+    if result.timed_out {
+        return Err("REPL status query timed out");
+    }
+    if !result.stderr.is_empty() {
+        return Err("Python status query failed");
+    }
+    let value: serde_json::Value = serde_json::from_str(result.stdout.trim())
+        .map_err(|_| "REPL did not return a JSON status object")?;
+    if !value["battery_pct"].as_f64().is_some_and(|b| (0.0..=100.0).contains(&b)) {
+        return Err("REPL status has no valid battery percentage");
+    }
+    for key in ["micropython_core", "python_compat"] {
+        if !value[key].as_str().is_some_and(|s| !s.trim().is_empty()) {
+            return Err("REPL status is missing interpreter versions");
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn readiness_requires_a_complete_successful_status_response() {
+        let mut result = repl::ExecResult { stdout: String::new(), stderr: String::new(), timed_out: false, elapsed: Duration::ZERO };
+        for invalid in ["", "hello", "{}", "{\"battery_pct\":101}", "{\"battery_pct\":50}"] {
+            result.stdout = invalid.into();
+            assert!(validate_status(&result).is_err());
+        }
+        result.stdout = r#"{"battery_pct":100,"micropython_core":"1.22.0","python_compat":"3.4.0"}"#.into();
+        assert!(validate_status(&result).is_ok());
+        let valid: serde_json::Value = serde_json::from_str(&result.stdout).unwrap();
+        for battery in [json!(-1), json!(101), json!("100"), json!(null)] {
+            let mut invalid = valid.clone();
+            invalid["battery_pct"] = battery;
+            result.stdout = invalid.to_string();
+            assert!(validate_status(&result).is_err());
+        }
+        for key in ["micropython_core", "python_compat"] {
+            let mut invalid = valid.clone();
+            invalid[key] = json!("");
+            result.stdout = invalid.to_string();
+            assert!(validate_status(&result).is_err());
+        }
+        result.stdout = valid.to_string();
+        result.timed_out = true;
+        assert!(validate_status(&result).is_err());
+        result.timed_out = false;
+        result.stderr = "Traceback: failed".into();
+        assert!(validate_status(&result).is_err());
+    }
 }
 
 fn main() {

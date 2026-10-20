@@ -1,6 +1,6 @@
 [package]
 name = "vexaim"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Run MicroPython on a VEX AIM robot over USB (built on vex-v5-serial)"
 license = "Apache-2.0"

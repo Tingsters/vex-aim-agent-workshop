@@ -29,13 +29,19 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Build
-        run: cargo build --release --manifest-path cli/Cargo.toml
+        run: cargo build --locked --release --manifest-path cli/Cargo.toml
 
       - name: Test CLI
-        run: cargo test --manifest-path cli/Cargo.toml
+        run: cargo test --locked --manifest-path cli/Cargo.toml
 
-      - name: Test vendored discovery logic
-        run: cargo test --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features serial
+      - name: Test vendored discovery and port configuration
+        run: cargo test --locked --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features serial
+
+      - name: Test blocking adapter (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cargo test --locked --manifest-path cli/Cargo.toml --features blocking-io
+          cargo test --locked --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features blocking-io
 
       - name: Smoke test the binary
         shell: bash
@@ -59,15 +65,6 @@ jobs:
           Compress-Archive -Path cli/target/release/vexaim.exe -DestinationPath dist/vexaim-windows-x86_64.zip -Force
           $h = (Get-FileHash -Algorithm SHA256 dist/vexaim-windows-x86_64.zip).Hash.ToLower()
           "$h  vexaim-windows-x86_64.zip" | Set-Content -Path dist/SHA256SUMS
-          $home1 = Join-Path $env:RUNNER_TEMP "h1"
-          New-Item -ItemType Directory -Path $home1 | Out-Null
-          ./install.ps1 -TargetHome $home1 -DryRun -FromDir dist
-          if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed" }
-          ./install.ps1 -TargetHome $home1 -FromDir dist -NoDoctor
-          if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed" }
-          if (-not (Test-Path "$home1/.agents/skills/vex-aim/bin/vexaim.exe")) { throw "binary not installed" }
-          if (-not (Test-Path "$home1/.claude/skills/vex-aim/SKILL.md")) { throw "skill not installed" }
-          & "$home1/.agents/skills/vex-aim/bin/vexaim.exe" --version
-          ./install.ps1 -TargetHome $home1 -Uninstall
-          if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed" }
-          if (Test-Path "$home1/.agents/skills/vex-aim") { throw "uninstall left files" }
+          ./dev/test-install.ps1 -AssetsDir dist
+          powershell -NoProfile -ExecutionPolicy Bypass -File dev/test-install.ps1 -AssetsDir dist
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell installer tests failed" }

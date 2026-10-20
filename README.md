@@ -53,6 +53,7 @@ The agent can make the robot move and there are no software speed or distance li
 1. Downloads the prebuilt `vexaim` program for your computer from this repository's
    [Releases](https://github.com/Tingsters/vex-aim-agent-workshop/releases), and **checks its SHA-256 checksum**
    (it refuses to install if the check fails).
+   Windows also requires version 0.1.1 or newer, which fixes silent REPL initialization caused by DTR.
 2. Copies the skill (`skill/vex-aim/`) and the program into `~/.agents/skills/vex-aim/` (Goose, Codex) and
    `~/.claude/skills/vex-aim/` (Claude Code). Those folders are the only places it writes.
 3. Linux only, **with your permission**: installs a small udev rule (needs `sudo`) so the system's modem manager
@@ -80,7 +81,7 @@ Useful options: `--agents goose|codex|claude|all`, `--dry-run`, `--uninstall`, `
 |---|---|
 | Linux x86_64 | **Tested with a real robot**: connection, commands, camera, unplug/replug recovery |
 | macOS (Apple Silicon, Intel) | Built automatically by CI; **not yet tested with a real robot** |
-| Windows x86_64 | Built automatically by CI; installer is experimental. The serial layer was fixed so it compiles on Windows and its I/O adapter is tested on Linux, but it is **not yet tested on real Windows** |
+| Windows x86_64 | **Tested with a real robot, 0.1.1+**: diagnostic, status, Python execution, error/timeout recovery, 100 consecutive calls, and installer checks in PowerShell 5.1/7. Camera and actuators remain untested on Windows. See [hardware notes](docs/hardware-notes.md). |
 | Bluetooth | Not supported yet; USB only |
 
 School-managed laptops may block downloaded programs. Ask your instructor about a loaner laptop. If you use
@@ -97,7 +98,7 @@ close VEXcode or any serial monitor, and on Linux wait ~30 seconds after pluggin
 
 The robot's USB port includes a MicroPython console and a camera. The `vexaim` tool sends your agent's Python code to
 the console and returns what it prints; the camera shows up as an ordinary webcam. It is built on
-[vexide/vex-v5-serial](https://github.com/vexide/vex-v5-serial) with two small patches. Details, evidence and known
+[vexide/vex-v5-serial](https://github.com/vexide/vex-v5-serial) with three patches. Details, evidence and known
 limits: [docs/how-it-works.md](docs/how-it-works.md) and [docs/hardware-notes.md](docs/hardware-notes.md).
 Instructors: [docs/instructors.md](docs/instructors.md).
 

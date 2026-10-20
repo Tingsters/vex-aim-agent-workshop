@@ -14,6 +14,7 @@ pub const PREAMBLE: &str = "try:\n    robot\nexcept NameError:\n    from vex imp
 pub enum Fail {
     NoRobot,
     Ambiguous(usize),
+    InvalidDevice(usize, usize),
     NoUserPort,
     Open(String),
     NotRepl(String),
@@ -25,8 +26,9 @@ impl std::fmt::Display for Fail {
         match self {
             Fail::NoRobot => write!(f, "no VEX device found: check the USB cable is plugged in and carries data, and the robot is on"),
             Fail::Ambiguous(n) => write!(f, "{n} VEX devices found; choose one with --device N (see `vexaim doctor`)"),
+            Fail::InvalidDevice(i, n) => write!(f, "device index {i} is out of range for {n} detected device(s); choose a listed index from `vexaim doctor`"),
             Fail::NoUserPort => write!(f, "found the robot's system port but no user (REPL) port"),
-            Fail::Open(e) => write!(f, "could not open the robot's serial ports ({e}). Linux: install the udev rule (linux/install-udev.sh), or wait ~30 s if ModemManager is probing, or close other programs using the port"),
+            Fail::Open(e) => write!(f, "could not open/configure the robot's serial ports ({e}). {}", open_hint(std::env::consts::OS)),
             Fail::NotRepl(e) => write!(f, "the user port did not respond like a MicroPython REPL ({e})"),
             Fail::Io(e) if is_disconnect(e) => write!(f, "the robot disconnected during the command ({e}): USB unplugged or the robot powered off. Output may be incomplete, and a movement command may or may not have run: check the robot before re-running anything"),
             Fail::Io(e) => write!(f, "serial I/O error: {e}"),
@@ -49,12 +51,33 @@ pub fn devices() -> Result<Vec<SerialDevice>, Fail> {
 }
 
 pub fn pick(mut all: Vec<SerialDevice>, index: Option<usize>) -> Result<SerialDevice, Fail> {
-    match (all.len(), index) {
+    let i = selected_index(all.len(), index)?;
+    Ok(all.remove(i))
+}
+
+fn selected_index(count: usize, index: Option<usize>) -> Result<usize, Fail> {
+    match (count, index) {
         (0, _) => Err(Fail::NoRobot),
-        (_, Some(i)) if i < all.len() => Ok(all.remove(i)),
-        (_, Some(_)) => Err(Fail::NoRobot),
-        (1, None) => Ok(all.remove(0)),
+        (_, Some(i)) if i < count => Ok(i),
+        (n, Some(i)) => Err(Fail::InvalidDevice(i, n)),
+        (1, None) => Ok(0),
         (n, None) => Err(Fail::Ambiguous(n)),
+    }
+}
+
+pub fn open_hint(os: &str) -> &'static str {
+    match os {
+        "linux" => "Close other serial tools. Install linux/install-udev.sh and re-plug, or wait 30 s if ModemManager is probing.",
+        "windows" => "Close VEXcode and other serial tools, then re-plug. If DTR setup fails, retain the COM port and Windows error when reporting it.",
+        _ => "Close VEXcode and other serial tools, then re-plug the robot.",
+    }
+}
+
+pub fn repl_hint(os: &str) -> &'static str {
+    match os {
+        "linux" => "Wait 30 s after plugging in unless the udev rule is installed. Close other serial tools, then retry; power-cycle if still stuck.",
+        "windows" => "Use vexaim 0.1.1 or newer (0.1.0 leaves DTR low and the AIM REPL silent). Close other serial tools, re-plug, and retry; power-cycle if still stuck. `vexaim stop` also needs a working REPL.",
+        _ => "Close other serial tools, re-plug, and retry; power-cycle if still stuck. `vexaim stop` also needs a working REPL.",
     }
 }
 
@@ -221,5 +244,24 @@ mod tests {
     fn raw_prompt_detected() {
         assert!(ends_raw_prompt(b"\r\nraw REPL; CTRL-B to exit\r\n>"));
         assert!(!ends_raw_prompt(b">>> "));
+    }
+
+    #[test]
+    fn device_selection_requires_an_unambiguous_valid_index() {
+        assert!(matches!(selected_index(0, None), Err(Fail::NoRobot)));
+        assert!(matches!(selected_index(2, None), Err(Fail::Ambiguous(2))));
+        assert!(matches!(selected_index(1, Some(1)), Err(Fail::InvalidDevice(1, 1))));
+        assert_eq!(selected_index(2, Some(1)).unwrap(), 1);
+        assert_eq!(selected_index(1, None).unwrap(), 0);
+    }
+
+    #[test]
+    fn windows_recovery_does_not_prescribe_linux_remedies() {
+        for hint in [open_hint("windows"), repl_hint("windows")] {
+            assert!(!hint.contains("ModemManager"));
+            assert!(!hint.contains("udev"));
+        }
+        assert!(repl_hint("windows").contains("0.1.1"));
+        assert!(open_hint("linux").contains("ModemManager"));
     }
 }

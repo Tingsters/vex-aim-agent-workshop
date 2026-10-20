@@ -2,11 +2,12 @@
 
 ## Before the event (once)
 
-1. **Publish the release** so the installer has something to download: tag and push `v0.1.0`
-   (`git tag v0.1.0 && git push origin v0.1.0`). `release.yml` builds Linux, macOS (arm64, x86_64) and Windows
+1. **Publish the corrected release** after validation: tag and push `v0.1.1`
+   (`git tag v0.1.1 && git push origin v0.1.1`). `release.yml` builds Linux, macOS (arm64, x86_64) and Windows
    binaries and attaches `vexaim-<target>.tar.gz|zip` plus `SHA256SUMS`. Check the Releases page has all of them.
-2. **Test on every laptop type you expect**: macOS, Windows and Linux are CI-built but only Linux has been tested with
-   a real robot. Plug in a robot and paste the student prompt from the README in a clean account.
+2. **Test on every laptop type you expect**: Windows serial verification is recorded separately from the Linux
+   camera/actuator tests; macOS hardware remains untested. Plug in a robot and paste the student prompt from
+   the README in a clean account. Verify the installed executable version, not just the repository checkout.
 3. **Charge the robots** and check `vexaim doctor` shows `verdict: ready` for each. Name or label the robots.
 4. **Loaner laptop**: keep one laptop with everything preinstalled for students whose managed device blocks
    downloaded programs.
@@ -34,5 +35,34 @@ off, another program holding the port, or (Linux) ModemManager before the udev r
 
 ## Known gaps before you teach
 
-See `docs/hardware-notes.md` ("Not tested"). In particular Windows/macOS and turns/vision-on-objects have not been verified
-on hardware.
+See `docs/hardware-notes.md` ("Not tested"). Windows camera/actuators, macOS hardware, and
+turns/vision-on-objects have not been verified on those platforms.
+
+## Validate and distribute the Windows correction
+
+0.1.0 detects and opens the AIM's COM ports but leaves DTR low, so the REPL never responds. The Windows
+installer now refuses that version before changing skill folders. Until 0.1.1 is published, the default
+download can therefore report an obsolete-release error; do not send students through repeated reinstalls.
+
+Maintainers can build with Rust stable's MSVC toolchain, Visual Studio C++ Build Tools, and a Windows SDK.
+Ask before installing administrator-level prerequisites. Students continue using prebuilt binaries.
+If Rust was installed without modifying PATH, prepend its bin folder to the current PowerShell process
+with `$env:PATH = (Join-Path $env:USERPROFILE '.cargo\bin') + ';' + $env:PATH`.
+
+```powershell
+cargo build --locked --release --manifest-path cli/Cargo.toml
+New-Item -ItemType Directory -Path dist -Force | Out-Null
+Compress-Archive -Path cli/target/release/vexaim.exe -DestinationPath dist/vexaim-windows-x86_64.zip -Force
+$hash = (Get-FileHash dist/vexaim-windows-x86_64.zip -Algorithm SHA256).Hash.ToLower()
+"$hash  vexaim-windows-x86_64.zip" | Set-Content dist/SHA256SUMS -Encoding ASCII
+./dev/test-install.ps1 -AssetsDir dist
+powershell -NoProfile -ExecutionPolicy Bypass -File dev/test-install.ps1 -AssetsDir dist
+./dev/test-hardware.ps1 -Tool ./cli/target/release/vexaim.exe -ReplugCycles 3
+```
+
+The hardware harness uses no actuators or camera. Follow its unplug/reconnect cues with the robot stationary.
+To validate a packaged installation, use `install.ps1 -FromDir dist -TargetHome <test-folder> -NoDoctor`,
+then run the harness against that installed executable. Supply both ZIP and SHA256SUMS for offline installs.
+Before the workshop, verify the published release has all four platform archives and matching checksums,
+then test the normal download install on a clean Windows account. Source changes alone do not distribute
+the fix. Restart the agent after updating its installed skill.

@@ -1,5 +1,5 @@
 name: release
-# Push a tag like v0.1.0 to build all platforms and publish a GitHub Release.
+# Push a tag like v0.1.1 to build all platforms and publish a GitHub Release.
 # install.sh / install.ps1 download vexaim-<target>.tar.gz|zip and SHA256SUMS from the latest release.
 on:
   push:
@@ -26,12 +26,21 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
       - name: Build
-        run: cargo build --release --manifest-path cli/Cargo.toml
+        run: cargo build --locked --release --manifest-path cli/Cargo.toml
       - name: Test
-        run: cargo test --manifest-path cli/Cargo.toml
+        run: cargo test --locked --manifest-path cli/Cargo.toml
+      - name: Test vendored discovery and port configuration
+        run: cargo test --locked --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features serial
+      - name: Test blocking adapter (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cargo test --locked --manifest-path cli/Cargo.toml --features blocking-io
+          cargo test --locked --manifest-path cli/Cargo.toml -p vex-v5-serial --no-default-features --features blocking-io
       - name: Package (macOS/Linux)
         if: runner.os != 'Windows'
-        run: sh scripts/package.sh ${{ matrix.target }} cli/target/release/${{ matrix.exe }} dist
+        run: |
+          sh scripts/package.sh ${{ matrix.target }} cli/target/release/${{ matrix.exe }} dist
+          sh dev/test-install.sh dist
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -40,6 +49,9 @@ jobs:
           Compress-Archive -Path cli/target/release/vexaim.exe -DestinationPath dist/vexaim-windows-x86_64.zip -Force
           $h = (Get-FileHash -Algorithm SHA256 dist/vexaim-windows-x86_64.zip).Hash.ToLower()
           "$h  vexaim-windows-x86_64.zip" | Set-Content -Path dist/SHA256SUMS
+          ./dev/test-install.ps1 -AssetsDir dist
+          powershell -NoProfile -ExecutionPolicy Bypass -File dev/test-install.ps1 -AssetsDir dist
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell installer tests failed" }
       - uses: actions/upload-artifact@v4
         with:
           name: vexaim-${{ matrix.target }}

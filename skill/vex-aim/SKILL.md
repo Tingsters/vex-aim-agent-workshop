@@ -23,9 +23,13 @@ vexaim doctor
 Fix whatever it reports before anything else (it prints a "fix:" for each failure). Success looks like
 `verdict: ready` with the robot's battery percentage.
 
+On Windows, use **vexaim 0.1.1 or newer**. Version 0.1.0 opens the COM ports but leaves DTR low, so the
+Python console stays silent. Update the executable and skill together with `install.ps1`; read
+`references/troubleshooting.md` if initialization fails. `vexaim stop` also requires a working REPL.
+
 ## Run Python on the robot
 
-```
+```sh
 vexaim exec 'print(robot.get_battery_level())'          # one-liner
 vexaim exec -f my_program.py                             # a file
 vexaim exec - <<'PY'                                     # multi-line from stdin (preferred)
@@ -34,6 +38,25 @@ wait(1, SECONDS)
 robot.led.off(ALL_LEDS)
 PY
 ```
+
+Windows PowerShell (5.1 or newer): use the executable in **this skill's** `bin` folder. For the default
+Goose/Codex installation:
+
+```powershell
+$vexaim = Join-Path $env:USERPROFILE '.agents\skills\vex-aim\bin\vexaim.exe'
+& $vexaim doctor
+& $vexaim exec "print('battery:', robot.get_battery_level())"
+& $vexaim exec -f 'my program.py'
+@'
+robot.led.on(ALL_LEDS, BLUE)
+wait(1, SECONDS)
+robot.led.off(ALL_LEDS)
+'@ | & $vexaim exec -
+```
+
+For Claude's installation, use `.claude` instead of `.agents`. PowerShell needs `&` to invoke a quoted
+executable path; Bash `<<'PY'` input and cmd.exe `%USERPROFILE%` syntax do not work there. Piped here-strings
+avoid native argument quoting differences between PowerShell versions.
 
 - `exec` automatically provides `robot = Robot()` plus `from vex import *` and `from vex_globals import *`
   (that second import is what defines names like `ALL_LEDS`, `RED`, `HAPPY`, `TADA`, `MMPS`).
@@ -79,14 +102,17 @@ The camera sees the room: do not send images of people to cloud services without
 
 ## What has and hasn't been tested
 
-Run on the test robot without error: battery, IMU reads, position reads, LEDs, emoji, sounds, a 50 mm
+Run on the Linux test robot without error: battery, IMU reads, position reads, LEDs, emoji, sounds, a 50 mm
 forward move, `robot.kicker.kick(SOFT)` (a human confirmed the kicker moved), vision queries (empty scene),
 threads, camera capture, error handling.
 **Unplug/replug:** after a stable replug the robot works again within ~2 s (20/20 recoveries, Linux; with the
 udev rule installed). If the cable is pulled mid-command, `vexaim` says the robot disconnected and that a move
 may or may not have run: check the robot before re-running anything.
+**Windows 11 (0.1.1):** doctor, info, Python execution, error/timeout recovery, and 100 consecutive calls
+passed; packaged installation was checked in PowerShell 5.1 and 7.
 **Not yet tested:** turns, `kicker.place/push`, harder kicks, longer/faster moves, AI Vision on real objects,
-`Ctrl-C` interrupt during a move, Windows and macOS. For LED/emoji/sound the call succeeded but the
+`Ctrl-C` interrupt during a move, Windows camera/actuators, and macOS hardware.
+For LED/emoji/sound the call succeeded on Linux but the
 human should confirm the effect. If the user asks for something untested, try it small first and report
 what actually happened.
 

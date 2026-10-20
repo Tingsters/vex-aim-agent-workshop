@@ -1,6 +1,8 @@
 # Starter ideas
 
-All snippets run with `vexaim exec - <<'PY' ... PY`. Items marked (tested) were run on a real AIM;
+On macOS/Linux, snippets run with `vexaim exec - <<'PY' ... PY`. On PowerShell, use `@'` and `'@ | & $vexaim exec -`
+as shown in SKILL.md, or save the Python in a file and use `& $vexaim exec -f program.py`.
+Items marked (tested) were run on a real AIM on Linux;
 the rest use documented calls and have not been run yet: try them small first.
 
 ## Say hello (tested calls)

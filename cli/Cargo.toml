@@ -5,7 +5,7 @@ default-members = ["vexaim"]
 resolver = "3"
 
 [workspace.dependencies]
-# Vendored copies of vexide/vex-v5-serial (MIT) with two small patches; see vendor/README.md.
+# Vendored copies of vexide/vex-v5-serial (MIT) with three patches; see vendor/README.md.
 vex-cdc = { version = "0.1.0", path = "vendor/vex-cdc" }
 vex-v5-serial = { version = "0.5.1", path = "vendor/vex-v5-serial" }
 
