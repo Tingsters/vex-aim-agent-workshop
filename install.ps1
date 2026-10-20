@@ -121,7 +121,7 @@ try {
 
   $exe = Join-Path $Tmp "vexaim.exe"
   try { $ver = & $exe --version; $versionExit = $LASTEXITCODE } catch { Die "the vexaim binary does not run on this machine (blocked by SmartScreen/antivirus/policy? see docs/troubleshooting.md)" }
-  if ($versionExit -ne 0 -or "$ver" -notmatch '^vexaim (\d+\.\d+\.\d+)$') { Die "the vexaim binary did not return a supported version: $ver" }
+  if ($versionExit -ne 0 -or "$ver" -notmatch '^vexaim (\d+\.\d+\.\d+)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$') { Die "the vexaim binary did not return a supported version: $ver" }
   if ([version]$Matches[1] -lt $MinimumVersion) {
     Die "vexaim $MinimumVersion or newer is required on Windows: 0.1.0 has a DTR bug that leaves the Python REPL silent. No skill folders changed. Use the corrected release, or -FromSource with an existing Rust/MSVC toolchain."
   }

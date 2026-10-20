@@ -8,6 +8,12 @@ What you are installing: a **skill** (`vex-aim`, instructions for you) and a sma
 prebuilt program that sends MicroPython to the robot over USB and can take a camera photo). Students do **not**
 need Rust, Python packages, VEXcode, a browser or special Wi-Fi.
 
+For Bluetooth requests, read `docs/bluetooth.md` before proceeding. The published
+tool currently uses USB; local 0.2.0-dev adds explicit Bluetooth.
+Native 640x480 camera JPEGs work from the home screen over BLE, with Python
+recovery and changing-scene controls passed. Remaining hardware acceptance must pass before
+claiming a complete wireless workflow.
+
 ## Ground rules
 
 - Work from this repository's root (the folder containing this file). If you have not cloned it yet:

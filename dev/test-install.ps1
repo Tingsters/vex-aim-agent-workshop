@@ -48,7 +48,7 @@ try {
     $skill = Join-Path $allHome "$agent/skills/vex-aim"
     Assert-True ((Test-Path "$skill/bin/vexaim.exe") -and (Test-Path "$skill/SKILL.md")) "installed $agent skill and executable"
     $version = & "$skill/bin/vexaim.exe" --version
-    Assert-True ($LASTEXITCODE -eq 0 -and "$version" -match '^vexaim (\d+\.\d+\.\d+)$' -and [version]$Matches[1] -ge [version]'0.1.1') "packaged executable runs for $agent"
+    Assert-True ($LASTEXITCODE -eq 0 -and "$version" -match '^vexaim (\d+\.\d+\.\d+)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$' -and [version]$Matches[1] -ge [version]'0.1.1') "packaged executable runs for $agent"
   }
   Invoke-Install $allHome @('-FromDir', $assets, '-NoDoctor')
   Assert-True (Test-Path "$allHome/.agents/skills/vex-aim/.vexaim-installed") 'upgrade is idempotent'
@@ -83,6 +83,14 @@ try {
   $env:VEXAIM_FIXTURE_FAIL = '1'
   Invoke-Install $rejectedHome @('-FromDir', $oldAssets, '-NoDoctor') 'did not return a supported version'
   Remove-Item Env:VEXAIM_FIXTURE_VERSION, Env:VEXAIM_FIXTURE_FAIL
+
+  $env:VEXAIM_FIXTURE_VERSION = '0.2.0-dev'
+  $developmentHome = Join-Path $work 'development'
+  Invoke-Install $developmentHome @('-FromDir', $oldAssets, '-Agents', 'codex', '-NoDoctor')
+  Assert-True (Test-Path "$developmentHome/.agents/skills/vex-aim/bin/vexaim.exe") 'development SemVer is accepted'
+  $env:VEXAIM_FIXTURE_VERSION = '0.1.0-dev'
+  Invoke-Install $allHome @('-FromDir', $oldAssets, '-NoDoctor') '0.1.1 or newer is required'
+  Remove-Item Env:VEXAIM_FIXTURE_VERSION
 
   $foreignHome = Join-Path $work 'foreign'
   $foreignSkill = Join-Path $foreignHome '.agents/skills/vex-aim'

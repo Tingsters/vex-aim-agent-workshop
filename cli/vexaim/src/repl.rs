@@ -1,7 +1,10 @@
 //! MicroPython raw-REPL client over the AIM user serial port, using vex-v5-serial's
 //! `Connection::{read_user, write_user}` only.
 use std::time::{Duration, Instant};
-use vex_v5_serial::{Connection, serial::{self, SerialConnection, SerialDevice, SerialError}};
+use vex_v5_serial::{
+    Connection,
+    serial::{self, SerialConnection, SerialDevice, SerialError},
+};
 
 pub const CTRL_A: u8 = 0x01; // enter raw REPL
 pub const CTRL_B: u8 = 0x02; // leave raw REPL
@@ -19,19 +22,40 @@ pub enum Fail {
     Open(String),
     NotRepl(String),
     Io(String),
+    Bluetooth(String),
 }
 
 impl std::fmt::Display for Fail {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Fail::NoRobot => write!(f, "no VEX device found: check the USB cable is plugged in and carries data, and the robot is on"),
-            Fail::Ambiguous(n) => write!(f, "{n} VEX devices found; choose one with --device N (see `vexaim doctor`)"),
-            Fail::InvalidDevice(i, n) => write!(f, "device index {i} is out of range for {n} detected device(s); choose a listed index from `vexaim doctor`"),
+            Fail::NoRobot => write!(
+                f,
+                "no VEX device found: check the USB cable is plugged in and carries data, and the robot is on"
+            ),
+            Fail::Ambiguous(n) => write!(
+                f,
+                "{n} VEX devices found; choose one with --device N (see `vexaim doctor`)"
+            ),
+            Fail::InvalidDevice(i, n) => write!(
+                f,
+                "device index {i} is out of range for {n} detected device(s); choose a listed index from `vexaim doctor`"
+            ),
             Fail::NoUserPort => write!(f, "found the robot's system port but no user (REPL) port"),
-            Fail::Open(e) => write!(f, "could not open/configure the robot's serial ports ({e}). {}", open_hint(std::env::consts::OS)),
-            Fail::NotRepl(e) => write!(f, "the user port did not respond like a MicroPython REPL ({e})"),
-            Fail::Io(e) if is_disconnect(e) => write!(f, "the robot disconnected during the command ({e}): USB unplugged or the robot powered off. Output may be incomplete, and a movement command may or may not have run: check the robot before re-running anything"),
-            Fail::Io(e) => write!(f, "serial I/O error: {e}"),
+            Fail::Open(e) => write!(
+                f,
+                "could not open/configure the robot's serial ports ({e}). {}",
+                open_hint(std::env::consts::OS)
+            ),
+            Fail::NotRepl(e) => write!(
+                f,
+                "the user port did not respond like a MicroPython REPL ({e})"
+            ),
+            Fail::Io(e) if is_disconnect(e) => write!(
+                f,
+                "the robot disconnected during the command ({e}): USB unplugged or the robot powered off. Output may be incomplete, and a movement command may or may not have run: check the robot before re-running anything"
+            ),
+            Fail::Io(e) => write!(f, "robot I/O error: {e}"),
+            Fail::Bluetooth(e) => write!(f, "Bluetooth: {e}"),
         }
     }
 }
@@ -67,22 +91,32 @@ fn selected_index(count: usize, index: Option<usize>) -> Result<usize, Fail> {
 
 pub fn open_hint(os: &str) -> &'static str {
     match os {
-        "linux" => "Close other serial tools. Install linux/install-udev.sh and re-plug, or wait 30 s if ModemManager is probing.",
-        "windows" => "Close VEXcode and other serial tools, then re-plug. If DTR setup fails, retain the COM port and Windows error when reporting it.",
+        "linux" => {
+            "Close other serial tools. Install linux/install-udev.sh and re-plug, or wait 30 s if ModemManager is probing."
+        }
+        "windows" => {
+            "Close VEXcode and other serial tools, then re-plug. If DTR setup fails, retain the COM port and Windows error when reporting it."
+        }
         _ => "Close VEXcode and other serial tools, then re-plug the robot.",
     }
 }
 
 pub fn repl_hint(os: &str) -> &'static str {
     match os {
-        "linux" => "Wait 30 s after plugging in unless the udev rule is installed. Close other serial tools, then retry; power-cycle if still stuck.",
-        "windows" => "Use vexaim 0.1.1 or newer (0.1.0 leaves DTR low and the AIM REPL silent). Close other serial tools, re-plug, and retry; power-cycle if still stuck. `vexaim stop` also needs a working REPL.",
-        _ => "Close other serial tools, re-plug, and retry; power-cycle if still stuck. `vexaim stop` also needs a working REPL.",
+        "linux" => {
+            "Wait 30 s after plugging in unless the udev rule is installed. Close other serial tools, then retry; power-cycle if still stuck."
+        }
+        "windows" => {
+            "Use vexaim 0.1.1 or newer (0.1.0 leaves DTR low and the AIM REPL silent). Close other serial tools, re-plug, and retry; power-cycle if still stuck. `vexaim stop` also needs a working REPL."
+        }
+        _ => {
+            "Close other serial tools, re-plug, and retry; power-cycle if still stuck. `vexaim stop` also needs a working REPL."
+        }
     }
 }
 
-pub struct Repl {
-    conn: SerialConnection,
+pub struct Repl<C = SerialConnection> {
+    conn: C,
     raw: bool,
 }
 
@@ -93,8 +127,18 @@ pub struct ExecResult {
     pub elapsed: Duration,
 }
 
-fn is_timeout(e: &SerialError) -> bool {
-    matches!(e, SerialError::IoError(io) if io.kind() == std::io::ErrorKind::TimedOut)
+fn is_timeout(e: &(dyn std::error::Error + 'static)) -> bool {
+    if let Some(SerialError::IoError(io)) = e.downcast_ref::<SerialError>() {
+        return io.kind() == std::io::ErrorKind::TimedOut;
+    }
+    #[cfg(feature = "bluetooth")]
+    if matches!(
+        e.downcast_ref::<vex_v5_serial::bluetooth::BluetoothError>(),
+        Some(vex_v5_serial::bluetooth::BluetoothError::Timeout)
+    ) {
+        return true;
+    }
+    false
 }
 
 impl Repl {
@@ -103,14 +147,28 @@ impl Repl {
             return Err(Fail::NoUserPort);
         }
         // short per-read timeout so we can poll with our own deadlines
-        let conn = dev.connect(Duration::from_millis(100)).map_err(|e| Fail::Open(e.to_string()))?;
+        let conn = dev
+            .connect(Duration::from_millis(100))
+            .map_err(|e| Fail::Open(e.to_string()))?;
         Ok(Self { conn, raw: false })
+    }
+}
+
+impl<C: Connection> Repl<C>
+where
+    C::Error: 'static,
+{
+    #[cfg(feature = "bluetooth")]
+    pub fn from_connection(conn: C) -> Self {
+        Self { conn, raw: false }
     }
 
     async fn write_all(&mut self, data: &[u8]) -> Result<(), Fail> {
         // chunked so the robot's UART/CDC buffer is never overrun by long programs
         for chunk in data.chunks(256) {
-            self.conn.write_user(chunk).await.map_err(|e| Fail::Io(format!("write to robot: {e}")))?;
+            self.conn.write_user(chunk).await.map_err(|e| {
+                transport_io(self.conn.connection_type(), format!("write to robot: {e}"))
+            })?;
             if data.len() > 256 {
                 smol::Timer::after(Duration::from_millis(10)).await;
             }
@@ -119,7 +177,11 @@ impl Repl {
     }
 
     /// Read until `pred(buf)` is true or the deadline passes.
-    async fn read_until(&mut self, deadline: Instant, pred: impl Fn(&[u8]) -> bool) -> Result<(Vec<u8>, bool), Fail> {
+    async fn read_until(
+        &mut self,
+        deadline: Instant,
+        pred: impl Fn(&[u8]) -> bool,
+    ) -> Result<(Vec<u8>, bool), Fail> {
         let mut buf = Vec::new();
         loop {
             if pred(&buf) {
@@ -133,13 +195,20 @@ impl Repl {
                 Ok(0) => {}
                 Ok(n) => buf.extend_from_slice(&chunk[..n]),
                 Err(e) if is_timeout(&e) => {}
-                Err(e) => return Err(Fail::Io(format!("read from robot: {e}"))),
+                Err(e) => {
+                    return Err(transport_io(
+                        self.conn.connection_type(),
+                        format!("read from robot: {e}"),
+                    ));
+                }
             }
         }
     }
 
     async fn drain(&mut self, ms: u64) -> Result<(), Fail> {
-        self.read_until(Instant::now() + Duration::from_millis(ms), |_| false).await.map(|_| ())
+        self.read_until(Instant::now() + Duration::from_millis(ms), |_| false)
+            .await
+            .map(|_| ())
     }
 
     /// Interrupt anything running and enter raw-REPL mode.
@@ -149,7 +218,9 @@ impl Repl {
             self.write_all(&[CTRL_C, CTRL_C]).await?;
             self.drain(300).await?;
             self.write_all(&[CTRL_A]).await?;
-            let (buf, ok) = self.read_until(Instant::now() + Duration::from_secs(2), ends_raw_prompt).await?;
+            let (buf, ok) = self
+                .read_until(Instant::now() + Duration::from_secs(2), ends_raw_prompt)
+                .await?;
             last = String::from_utf8_lossy(&buf).into_owned();
             if ok {
                 self.raw = true;
@@ -167,7 +238,7 @@ impl Repl {
         let t = Instant::now();
         self.write_all(code.as_bytes()).await?;
         self.write_all(&[CTRL_D]).await?;
-        let (buf, done) = self.read_until(t + timeout, |b| b.starts_with(b"OK") && frame_end(b).is_some()).await?;
+        let (buf, done) = self.read_until(t + timeout, complete_raw_frame).await?;
         if !done {
             // stop the running program, then return to a known state
             self.write_all(&[CTRL_C, CTRL_C]).await?;
@@ -175,10 +246,20 @@ impl Repl {
             self.raw = false;
             let text = String::from_utf8_lossy(&buf);
             let out = text.strip_prefix("OK").unwrap_or(&text).to_string();
-            return Ok(ExecResult { stdout: out, stderr: String::new(), timed_out: true, elapsed: t.elapsed() });
+            return Ok(ExecResult {
+                stdout: out,
+                stderr: String::new(),
+                timed_out: true,
+                elapsed: t.elapsed(),
+            });
         }
         let (stdout, stderr) = parse_frame(&buf);
-        Ok(ExecResult { stdout, stderr, timed_out: false, elapsed: t.elapsed() })
+        Ok(ExecResult {
+            stdout,
+            stderr,
+            timed_out: false,
+            elapsed: t.elapsed(),
+        })
     }
 
     /// Leave raw mode so a human can use the normal `>>>` REPL afterwards.
@@ -195,6 +276,14 @@ fn ends_raw_prompt(b: &[u8]) -> bool {
     b.ends_with(b"to exit\r\n>")
 }
 
+fn transport_io(kind: vex_v5_serial::ConnectionType, detail: String) -> Fail {
+    if kind.is_bluetooth() {
+        Fail::Bluetooth(detail)
+    } else {
+        Fail::Io(detail)
+    }
+}
+
 /// Byte offset just past the `\x04` that ends stdout, and the one ending stderr, if both present.
 fn frame_end(b: &[u8]) -> Option<(usize, usize)> {
     let first = b.iter().position(|&c| c == CTRL_D)?;
@@ -202,11 +291,20 @@ fn frame_end(b: &[u8]) -> Option<(usize, usize)> {
     Some((first, second))
 }
 
+fn complete_raw_frame(b: &[u8]) -> bool {
+    // BLE can deliver the final '>' in its own notification. Consume it before
+    // the next command, otherwise that delayed prompt corrupts the next 'OK'.
+    b.starts_with(b"OK") && frame_end(b).is_some_and(|(_, end)| b.get(end + 1) == Some(&b'>'))
+}
+
 fn parse_frame(b: &[u8]) -> (String, String) {
     let (a, z) = frame_end(b).unwrap_or((b.len(), b.len()));
     let out = &b[2.min(b.len())..a]; // skip "OK"
     let err = if a + 1 <= z { &b[a + 1..z] } else { &b[0..0] };
-    (String::from_utf8_lossy(out).into_owned(), String::from_utf8_lossy(err).into_owned())
+    (
+        String::from_utf8_lossy(out).into_owned(),
+        String::from_utf8_lossy(err).into_owned(),
+    )
 }
 
 #[cfg(test)]
@@ -234,10 +332,28 @@ mod tests {
     }
 
     #[test]
+    fn raw_reply_waits_for_fragmented_final_prompt() {
+        assert!(!complete_raw_frame(b"OKhello\x04\x04"));
+        assert!(complete_raw_frame(b"OKhello\x04\x04>"));
+        assert!(!complete_raw_frame(b">OKhello\x04\x04>"));
+    }
+
+    #[test]
     fn disconnect_errors_are_recognised() {
         assert!(is_disconnect("IO Error: Broken pipe"));
         assert!(is_disconnect("IO Error: No such device"));
         assert!(!is_disconnect("IO Error: Operation timed out"));
+    }
+
+    #[test]
+    fn bluetooth_io_failure_does_not_prescribe_a_usb_reconnect() {
+        let error = transport_io(
+            vex_v5_serial::ConnectionType::Bluetooth,
+            "broken pipe".into(),
+        )
+        .to_string();
+        assert!(error.contains("Bluetooth"));
+        assert!(!error.contains("USB"));
     }
 
     #[test]
@@ -250,7 +366,10 @@ mod tests {
     fn device_selection_requires_an_unambiguous_valid_index() {
         assert!(matches!(selected_index(0, None), Err(Fail::NoRobot)));
         assert!(matches!(selected_index(2, None), Err(Fail::Ambiguous(2))));
-        assert!(matches!(selected_index(1, Some(1)), Err(Fail::InvalidDevice(1, 1))));
+        assert!(matches!(
+            selected_index(1, Some(1)),
+            Err(Fail::InvalidDevice(1, 1))
+        ));
         assert_eq!(selected_index(2, Some(1)).unwrap(), 1);
         assert_eq!(selected_index(1, None).unwrap(), 0);
     }

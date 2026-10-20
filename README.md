@@ -5,6 +5,11 @@ robot: light it up, make it talk, read its sensors, look through its camera, and
 chatting. Everything runs on your laptop over the robot's USB cable. No VEXcode, no browser, no Wi-Fi setup, and
 no programming tools to install by hand: your agent sets it all up.
 
+Bluetooth support is under development. Native 640x480 BLE camera capture now
+works from the home screen without menu navigation. The local 0.2.0-dev CLI adds
+Bluetooth commands; the published student setup still uses USB. Instructors can read
+the [Bluetooth investigation and test procedure](docs/bluetooth.md).
+
 ## Quick start (about 5 minutes)
 
 **You need:** a VEX AIM robot and its USB cable, a laptop, and one agent installed and signed in
@@ -81,8 +86,8 @@ Useful options: `--agents goose|codex|claude|all`, `--dry-run`, `--uninstall`, `
 |---|---|
 | Linux x86_64 | **Tested with a real robot**: connection, commands, camera, unplug/replug recovery |
 | macOS (Apple Silicon, Intel) | Built automatically by CI; **not yet tested with a real robot** |
-| Windows x86_64 | **Tested with a real robot, 0.1.1+**: diagnostic, status, Python execution, error/timeout recovery, 100 consecutive calls, and installer checks in PowerShell 5.1/7. Camera and actuators remain untested on Windows. See [hardware notes](docs/hardware-notes.md). |
-| Bluetooth | Not supported yet; USB only |
+| Windows x86_64 | **USB tested with a real robot, 0.1.1+**: diagnostic, status, Python execution, error/timeout recovery, 100 consecutive calls, and installer checks in PowerShell 5.1/7. USB camera and actuators remain untested on Windows. See [hardware notes](docs/hardware-notes.md). |
+| Bluetooth | **Development CLI only**: Windows authentication, REPL/state and native 640x480 camera snapshots verified. Full sensor/actuator and release acceptance pending. Published 0.1.1 is USB-only. |
 
 School-managed laptops may block downloaded programs. Ask your instructor about a loaner laptop. If you use
 the Goose app from Flatpak on Linux, it cannot see USB devices without extra permissions; use the standard

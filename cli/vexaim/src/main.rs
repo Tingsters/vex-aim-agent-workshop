@@ -1,14 +1,20 @@
+#[cfg(feature = "bluetooth")]
+mod bluetooth;
 mod repl;
 mod snap;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use repl::{Fail, PREAMBLE, Repl};
 use serde_json::json;
 use std::io::Read;
 use std::time::Duration;
 
 #[derive(Parser)]
-#[command(name = "vexaim", version, about = "Run MicroPython on a VEX AIM robot over USB.\nThe robot's USB user port is a MicroPython REPL; `exec` sends code to it and returns the output.")]
+#[command(
+    name = "vexaim",
+    version,
+    about = "Run MicroPython and save camera frames from a VEX AIM over USB or Bluetooth. USB is the default; Bluetooth must be selected explicitly."
+)]
 struct Cli {
     /// Machine-readable JSON output
     #[arg(long, global = true)]
@@ -16,13 +22,42 @@ struct Cli {
     /// Which robot to use when several are plugged in (0-based, see `doctor`)
     #[arg(long, global = true)]
     device: Option<usize>,
+    /// Connection to use; commands never fall back to another transport
+    #[arg(long, global = true, value_enum, default_value_t = Transport::Usb)]
+    transport: Transport,
+    /// Exact Bluetooth robot name from `bluetooth scan` (for example AIM6518)
+    #[arg(long, global = true, conflicts_with = "device")]
+    name: Option<String>,
     #[command(subcommand)]
     cmd: Cmd,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Transport {
+    Usb,
+    Bluetooth,
+}
+
+#[derive(Subcommand)]
+enum BluetoothCmd {
+    /// List VEX BLE candidates without pairing or executing robot code
+    Scan,
+    /// Pair the named AIM using masked local input and the native OS credential store
+    Pair,
+    /// Remove this CLI's stored credential for the named visible robot (does not unpair the robot)
+    Forget,
+}
+
+const STOP_CODE: &str = "robot.stop_all_movement()\ntry:\n    robot.sound.stop()\nexcept Exception:\n    pass\nwait(400, MSEC)\nprint('stopped', robot.is_stopped())\n";
+
 #[derive(Subcommand)]
 enum Cmd {
-    /// Check the USB connection, REPL, battery; print fixes if something is wrong
+    /// Bluetooth discovery and local credential management
+    Bluetooth {
+        #[command(subcommand)]
+        command: BluetoothCmd,
+    },
+    /// Check the selected connection, REPL and battery; print fixes if something is wrong
     Doctor,
     /// Run Python on the robot. CODE, or -f FILE, or "-" for stdin. State (variables, `robot`) persists between calls.
     Exec {
@@ -40,7 +75,7 @@ enum Cmd {
     Stop,
     /// Battery, heading, position as JSON
     Info,
-    /// Save one camera frame from the robot as a JPEG (the robot's camera appears as a normal USB webcam)
+    /// Save one native camera JPEG over the selected transport
     Snap {
         /// Output file (default: vexaim-snap-<unix-time>.jpg in the current directory)
         #[arg(short, long)]
@@ -49,44 +84,99 @@ enum Cmd {
 }
 
 fn out(cli_json: bool, v: serde_json::Value, human: impl FnOnce() -> String) {
-    if cli_json { println!("{v}") } else { println!("{}", human()) }
+    if cli_json {
+        println!("{v}")
+    } else {
+        println!("{}", human())
+    }
 }
 
 fn run(cli: &Cli) -> Result<i32, Fail> {
+    let bluetooth =
+        cli.transport == Transport::Bluetooth || matches!(cli.cmd, Cmd::Bluetooth { .. });
+    if bluetooth {
+        if cli.device.is_some() {
+            return Err(Fail::Bluetooth(
+                "--device is a USB index; select Bluetooth with --name NAME.".into(),
+            ));
+        }
+        #[cfg(feature = "bluetooth")]
+        return bluetooth::run(cli);
+        #[cfg(not(feature = "bluetooth"))]
+        return Err(Fail::Bluetooth("This build has no Bluetooth support; install a combined build or rebuild with --features bluetooth.".into()));
+    }
+    if cli.name.is_some() {
+        return Err(Fail::Bluetooth(
+            "--name requires --transport bluetooth (or a bluetooth subcommand).".into(),
+        ));
+    }
     match &cli.cmd {
+        Cmd::Bluetooth { .. } => unreachable!(),
         Cmd::Doctor => doctor(cli),
         Cmd::Stop => {
             let dev = repl::pick(repl::devices()?, cli.device)?;
             let mut r = Repl::open(&dev)?;
             let res = smol::block_on(async {
                 r.sync().await?;
-                let x = r.exec(&format!("{PREAMBLE}robot.stop_all_movement()\ntry:\n    robot.sound.stop()\nexcept Exception:\n    pass\nwait(400, MSEC)\nprint('stopped', robot.is_stopped())\n"), Duration::from_secs(5)).await?;
+                let x = r
+                    .exec(&format!("{PREAMBLE}{STOP_CODE}"), Duration::from_secs(5))
+                    .await?;
                 r.close().await;
                 Ok::<_, Fail>(x)
             })?;
-            out(cli.json, json!({"ok": res.stderr.is_empty(), "stdout": res.stdout, "stderr": res.stderr}), || format!("{}{}", res.stdout, res.stderr));
+            out(
+                cli.json,
+                json!({"ok": res.stderr.is_empty(), "stdout": res.stdout, "stderr": res.stderr}),
+                || format!("{}{}", res.stdout, res.stderr),
+            );
             Ok(if res.stderr.is_empty() { 0 } else { 1 })
         }
         Cmd::Snap { output } => match snap::snap(output.as_deref()) {
             Ok(r) => {
-                out(cli.json, json!({"ok": true, "path": r.path, "width": r.width, "height": r.height, "bytes": r.bytes}), || format!("saved {} ({}x{}, {} bytes)", r.path, r.width, r.height, r.bytes));
+                out(
+                    cli.json,
+                    json!({"ok": true, "path": r.path, "width": r.width, "height": r.height, "bytes": r.bytes}),
+                    || {
+                        format!(
+                            "saved {} ({}x{}, {} bytes)",
+                            r.path, r.width, r.height, r.bytes
+                        )
+                    },
+                );
                 Ok(0)
             }
             Err(e) => Err(Fail::Io(format!("camera: {e}"))),
         },
         Cmd::Info => {
-            let code = format!("import json\nprint(json.dumps({{'battery_pct': robot.get_battery_level(), 'heading': robot.inertial.get_heading(), 'x_mm': robot.get_x_position(), 'y_mm': robot.get_y_position(), 'stopped': robot.is_stopped()}}))\n");
+            let code = format!(
+                "import json\nprint(json.dumps({{'battery_pct': robot.get_battery_level(), 'heading': robot.inertial.get_heading(), 'x_mm': robot.get_x_position(), 'y_mm': robot.get_y_position(), 'stopped': robot.is_stopped()}}))\n"
+            );
             run_exec(cli, &code, 10, true)
         }
-        Cmd::Exec { code, file, timeout, no_preamble } => {
-            let src = match (code, file) {
-                (Some(c), None) if c == "-" => { let mut s = String::new(); std::io::stdin().read_to_string(&mut s).map_err(|e| Fail::Io(e.to_string()))?; s }
-                (Some(c), None) => c.clone(),
-                (None, Some(f)) => std::fs::read_to_string(f).map_err(|e| Fail::Io(format!("{f}: {e}")))?,
-                _ => return Err(Fail::Io("give CODE, or -f FILE, or '-' for stdin".into())),
-            };
+        Cmd::Exec {
+            code,
+            file,
+            timeout,
+            no_preamble,
+        } => {
+            let src = exec_source(code, file)?;
             run_exec(cli, &src, *timeout, !*no_preamble)
         }
+    }
+}
+
+fn exec_source(code: &Option<String>, file: &Option<String>) -> Result<String, Fail> {
+    match (code, file) {
+        (Some(c), None) if c == "-" => {
+            let mut s = String::new();
+            std::io::stdin()
+                .read_to_string(&mut s)
+                .map_err(|e| Fail::Io(e.to_string()))?;
+            Ok(s)
+        }
+        (Some(c), None) => Ok(c.clone()),
+        (None, Some(f)) => std::fs::read_to_string(f).map_err(|e| Fail::Io(format!("{f}: {e}"))),
+        _ => Err(Fail::Io("give CODE, or -f FILE, or '-' for stdin".into())),
     }
 }
 
@@ -97,48 +187,87 @@ fn run_exec(cli: &Cli, src: &str, timeout: u64, preamble: bool) -> Result<i32, F
         if preamble {
             // separate call so line numbers in tracebacks match the student's code
             let p = r.exec(PREAMBLE, Duration::from_secs(10)).await?;
-            if !p.stderr.is_empty() { return Ok::<_, Fail>(p); }
+            if !p.stderr.is_empty() {
+                return Ok::<_, Fail>(p);
+            }
         }
         let x = r.exec(src, Duration::from_secs(timeout)).await?;
         r.close().await;
         Ok(x)
     })?;
+    Ok(print_exec(cli, &res, timeout))
+}
+
+fn print_exec(cli: &Cli, res: &repl::ExecResult, timeout: u64) -> i32 {
     let ok = res.stderr.is_empty() && !res.timed_out;
-    out(cli.json, json!({"ok": ok, "stdout": res.stdout, "stderr": res.stderr, "timed_out": res.timed_out, "possible_output_truncation": res.timed_out && res.stdout.len() >= 1500, "elapsed_ms": res.elapsed.as_millis() as u64}), || {
-        let mut s = res.stdout.replace("\r\n", "\n");
-        if res.timed_out {
-            s.push_str(&format!("[timed out after {timeout}s: program interrupted]\n"));
-            if res.stdout.len() >= 1500 {
-                s.push_str("[hint: the robot's USB output buffer overflows when more than ~2 KB is printed in one burst, and the rest is lost. Print less, or print in chunks with wait(50, MSEC) between them.]\n");
+    out(
+        cli.json,
+        json!({"ok": ok, "stdout": res.stdout, "stderr": res.stderr, "timed_out": res.timed_out, "possible_output_truncation": res.timed_out && res.stdout.len() >= 1500, "elapsed_ms": res.elapsed.as_millis() as u64}),
+        || {
+            let mut s = res.stdout.replace("\r\n", "\n");
+            if res.timed_out {
+                s.push_str(&format!(
+                    "[timed out after {timeout}s: program interrupted]\n"
+                ));
+                if res.stdout.len() >= 1500 {
+                    s.push_str("[hint: the robot's output buffer can overflow when more than ~2 KB is printed in one burst. Print less, or print in chunks with wait(50, MSEC) between them.]\n");
+                }
             }
-        }
-        if !res.stderr.is_empty() { s.push_str(&res.stderr.replace("\r\n", "\n")); }
-        s.trim_end().to_string()
-    });
-    Ok(if ok { 0 } else { 1 })
+            if !res.stderr.is_empty() {
+                s.push_str(&res.stderr.replace("\r\n", "\n"));
+            }
+            s.trim_end().to_string()
+        },
+    );
+    if ok { 0 } else { 1 }
 }
 
 fn doctor(cli: &Cli) -> Result<i32, Fail> {
     let mut checks: Vec<serde_json::Value> = Vec::new();
     let mut ready = true;
     let mut add = |name: &str, ok: bool, detail: String, hint: &str| {
-        if !ok { ready = false; }
-        checks.push(json!({"check": name, "ok": ok, "detail": detail, "fix": if ok { "" } else { hint }}));
+        if !ok {
+            ready = false;
+        }
+        checks.push(
+            json!({"check": name, "ok": ok, "detail": detail, "fix": if ok { "" } else { hint }}),
+        );
     };
     let devs = match repl::devices() {
         Ok(d) => d,
-        Err(e) => { add("usb-discovery", false, e.to_string(), "re-plug the cable"); vec![] }
+        Err(e) => {
+            add("usb-discovery", false, e.to_string(), "re-plug the cable");
+            vec![]
+        }
     };
-    add("robot-detected", !devs.is_empty(), format!("{} device(s)", devs.len()),
-        "Plug the AIM into this computer with its USB cable (a data cable, not charge-only) and turn the robot on.");
+    add(
+        "robot-detected",
+        !devs.is_empty(),
+        format!("{} device(s)", devs.len()),
+        "Plug the AIM into this computer with its USB cable (a data cable, not charge-only) and turn the robot on.",
+    );
     for (i, d) in devs.iter().enumerate() {
-        add(&format!("device{i}-ports"), d.user_port().is_some(),
-            format!("system={} user={}", d.system_port().port_info.port_name, d.user_port().map(|u| u.port_info.port_name.clone()).unwrap_or("none".into())),
-            "Re-plug the robot. If it persists, the USB interface layout is unexpected: report it.");
+        add(
+            &format!("device{i}-ports"),
+            d.user_port().is_some(),
+            format!(
+                "system={} user={}",
+                d.system_port().port_info.port_name,
+                d.user_port()
+                    .map(|u| u.port_info.port_name.clone())
+                    .unwrap_or("none".into())
+            ),
+            "Re-plug the robot. If it persists, the USB interface layout is unexpected: report it.",
+        );
     }
     let os = std::env::consts::OS;
     match repl::pick(devs, cli.device) {
-        Err(e) => add("device-selection", false, e.to_string(), "Choose a listed --device N when several robots are connected; check that the selected robot is plugged in."),
+        Err(e) => add(
+            "device-selection",
+            false,
+            e.to_string(),
+            "Choose a listed --device N when several robots are connected; check that the selected robot is plugged in.",
+        ),
         Ok(dev) => match Repl::open(&dev) {
             Err(e) => add("open-ports", false, e.to_string(), repl::open_hint(os)),
             Ok(mut r) => {
@@ -151,9 +280,12 @@ fn doctor(cli: &Cli) -> Result<i32, Fail> {
                 match res {
                     Ok(x) => match validate_status(&x) {
                         Ok(()) => add("repl", true, x.stdout.trim().to_string(), ""),
-                        Err(reason) => add("repl", false,
+                        Err(reason) => add(
+                            "repl",
+                            false,
                             format!("{reason}; stdout={:?}; stderr={:?}", x.stdout, x.stderr),
-                            repl::repl_hint(os)),
+                            repl::repl_hint(os),
+                        ),
                     },
                     Err(e) => add("repl", false, e.to_string(), repl::repl_hint(os)),
                 }
@@ -165,8 +297,15 @@ fn doctor(cli: &Cli) -> Result<i32, Fail> {
         println!("{}", json!({"verdict": verdict, "checks": checks}));
     } else {
         for c in &checks {
-            println!("[{}] {}: {}", if c["ok"] == true { "ok" } else { "FAIL" }, c["check"].as_str().unwrap(), c["detail"].as_str().unwrap());
-            if c["ok"] == false { println!("       fix: {}", c["fix"].as_str().unwrap()); }
+            println!(
+                "[{}] {}: {}",
+                if c["ok"] == true { "ok" } else { "FAIL" },
+                c["check"].as_str().unwrap(),
+                c["detail"].as_str().unwrap()
+            );
+            if c["ok"] == false {
+                println!("       fix: {}", c["fix"].as_str().unwrap());
+            }
         }
         println!("verdict: {verdict}");
     }
@@ -182,7 +321,10 @@ fn validate_status(result: &repl::ExecResult) -> Result<(), &'static str> {
     }
     let value: serde_json::Value = serde_json::from_str(result.stdout.trim())
         .map_err(|_| "REPL did not return a JSON status object")?;
-    if !value["battery_pct"].as_f64().is_some_and(|b| (0.0..=100.0).contains(&b)) {
+    if !value["battery_pct"]
+        .as_f64()
+        .is_some_and(|b| (0.0..=100.0).contains(&b))
+    {
         return Err("REPL status has no valid battery percentage");
     }
     for key in ["micropython_core", "python_compat"] {
@@ -198,13 +340,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn bluetooth_is_explicit_and_never_uses_usb_indices_or_pin_arguments() {
+        let cli = Cli::try_parse_from(["vexaim", "info"]).unwrap();
+        assert!(cli.transport == Transport::Usb);
+        let cli = Cli::try_parse_from([
+            "vexaim",
+            "--transport",
+            "bluetooth",
+            "--name",
+            "AIM6518",
+            "snap",
+        ])
+        .unwrap();
+        assert!(cli.transport == Transport::Bluetooth);
+        assert!(
+            Cli::try_parse_from(["vexaim", "--name", "AIM6518", "--device", "0", "info"]).is_err()
+        );
+        assert!(Cli::try_parse_from(["vexaim", "bluetooth", "pair", "--pin", "1234"]).is_err());
+    }
+
+    #[test]
     fn readiness_requires_a_complete_successful_status_response() {
-        let mut result = repl::ExecResult { stdout: String::new(), stderr: String::new(), timed_out: false, elapsed: Duration::ZERO };
-        for invalid in ["", "hello", "{}", "{\"battery_pct\":101}", "{\"battery_pct\":50}"] {
+        let mut result = repl::ExecResult {
+            stdout: String::new(),
+            stderr: String::new(),
+            timed_out: false,
+            elapsed: Duration::ZERO,
+        };
+        for invalid in [
+            "",
+            "hello",
+            "{}",
+            "{\"battery_pct\":101}",
+            "{\"battery_pct\":50}",
+        ] {
             result.stdout = invalid.into();
             assert!(validate_status(&result).is_err());
         }
-        result.stdout = r#"{"battery_pct":100,"micropython_core":"1.22.0","python_compat":"3.4.0"}"#.into();
+        result.stdout =
+            r#"{"battery_pct":100,"micropython_core":"1.22.0","python_compat":"3.4.0"}"#.into();
         assert!(validate_status(&result).is_ok());
         let valid: serde_json::Value = serde_json::from_str(&result.stdout).unwrap();
         for battery in [json!(-1), json!(101), json!("100"), json!(null)] {
@@ -233,7 +407,11 @@ fn main() {
     match run(&cli) {
         Ok(code) => std::process::exit(code),
         Err(e) => {
-            if cli.json { println!("{}", json!({"ok": false, "error": e.to_string()})) } else { eprintln!("error: {e}") }
+            if cli.json {
+                println!("{}", json!({"ok": false, "error": e.to_string()}))
+            } else {
+                eprintln!("error: {e}")
+            }
             std::process::exit(2);
         }
     }

@@ -1,6 +1,6 @@
 [workspace]
-members = ["vexaim", "vendor/vex-v5-serial", "vendor/vex-cdc"]
-# Build only the CLI by default: it enables just the USB feature of vex-v5-serial, so no Bluetooth/libdbus.
+members = ["vexaim", "vendor/vex-v5-serial", "vendor/vex-cdc", "vendor/btleplug"]
+# Build the combined USB/Bluetooth CLI; --no-default-features keeps USB only.
 default-members = ["vexaim"]
 resolver = "3"
 
@@ -13,3 +13,7 @@ vex-v5-serial = { version = "0.5.1", path = "vendor/vex-v5-serial" }
 opt-level = "s"
 lto = true
 strip = true
+
+[patch.crates-io]
+# AIM advertises indications but delivers its console only through notifications.
+btleplug = { path = "vendor/btleplug" }

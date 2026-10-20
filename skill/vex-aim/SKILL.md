@@ -1,13 +1,21 @@
 ---
 name: vex-aim
-description: Control a USB-connected VEX AIM robot from this computer. Use when the user wants to drive, light up, make sounds with, read sensors from, or see through the camera of a VEX AIM robot. Runs MicroPython on the robot over USB with the `vexaim` tool; no VEXcode needed.
+description: Control a VEX AIM robot from this computer over USB or the workshop's developing Bluetooth transport. Use when the user wants to drive, light up, make sounds with, read sensors from, or see through its camera. Uses the vexaim tool; read the Bluetooth reference for wireless requests and release limitations.
 ---
 
-# Controlling a VEX AIM robot over USB
+# Controlling a VEX AIM robot
 
 The AIM's USB port is a **MicroPython REPL**. The bundled `vexaim` tool sends any Python you write to the
 robot and returns what it prints. You may run arbitrary Python on the robot; be creative.
 Camera frames come back to this computer as ordinary JPEG files.
+
+For Bluetooth requests, first read `references/bluetooth.md`: published 0.1.1 is
+USB-only; the local 0.2.0-dev CLI adds explicit Bluetooth commands. Native 640x480
+JPEGs have been verified over BLE from the home screen with Python recovery.
+Camera snapshots need no LCD navigation, preview or reset. The reference records
+the development commands and remaining hardware/release checks.
+For remembered LCD menu positions, that reference describes the instructor's
+automatic AI Vision selector; do not replay a fixed press sequence or reset the robot.
 
 `vexaim` is the program in this skill's own `bin/` folder, next to this SKILL.md (`bin/vexaim`, or
 `bin\vexaim.exe` on Windows). Call it by its full path, e.g. `~/.agents/skills/vex-aim/bin/vexaim`; below it is
@@ -15,6 +23,10 @@ just written `vexaim`. If `bin/` is missing the skill was not installed with the
 https://github.com/Tingsters/vex-aim-agent-workshop (`install.sh` / `install.ps1`).
 
 ## First: always run the doctor
+
+Use the selected transport. For wireless requests, follow the Bluetooth reference
+and include `--transport bluetooth --name NAME`; do not diagnose Bluetooth with
+the USB-only doctor or ask for a USB reconnect.
 
 ```
 vexaim doctor

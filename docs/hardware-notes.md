@@ -4,6 +4,137 @@ Linux tests: one robot (VEX AIM, firmware reported as 1.0.0-beta.2), one Linux x
 October 2026. Windows diagnostics were added on October 19, 2026, on one Windows 11 x86_64 computer.
 Anything not listed here is **untested**.
 
+## Windows Bluetooth feasibility, October 19, 2026
+
+- BLE discovery found AIM6518 advertising `0x0670`; GATT connected with MTU 256.
+  Device Information reported AIM / REV1 / `1.0.0.b0`. This BLE firmware string
+  is recorded separately from the earlier USB/Python firmware description.
+- With Windows PnP confirming **no AIM USB endpoints present**, the instructor
+  probe accepted the displayed numeric-digit code and saved it in Windows
+  Credential Manager. TXUser notifications delivered a raw-REPL prompt and
+  stationary Python battery/state: initially 100%, stopped true; a later read
+  reported 97%, with subsequent pre-capture reads of 94% and 93%. Separate
+  reconnects reused the vault entry. Windows OS bonding
+  remained false, demonstrating that OS bonding is not the VEX authentication check.
+- A probe attempted with USB attached was rejected before pairing and is excluded.
+  A later connection dropped, followed by two scans with no AIM detected. The
+  student confirmed the robot had switched off, and acknowledged power-on before
+  another stationary probe. This is not
+  a completed reconnection/reliability acceptance run.
+- Native vision introspection showed no `get_camera_image`; no `camera` import
+  was available. A CDC screen-capture command received a valid-CRC ACK `0x76`.
+  A complete 115,200-byte LCD framebuffer transferred in 27.406 s with per-packet
+  CRC/address validation. It was decoded as 240x240 RGB565 into a local JPEG;
+  the student confirmed it showed LCD contents, not the camera scene. Layer 1
+  returned size zero. Those initial experiments did not establish camera capture;
+  the later manual-mode test below did retrieve camera imagery.
+- Console recovery after the LCD-transfer experiments failed. Five-minute idle
+  sleep is documented by VEX, but its role here is unproven. The probe no longer
+  sends a program-upload completion command after read-only framebuffer access;
+  that change alone was not a verified recovery fix. The later camera spike
+  isolated a notification-lifetime issue: system unsubscribe silenced Python
+  responses, even without a framebuffer transfer. Re-registering user notifications
+  failed to recover it; retaining both subscriptions through cleanup succeeded.
+  A complete 115,200-byte LCD capture then took 25.656 s including preview startup,
+  hid the preview and read battery 81%, stopped true in the same connection.
+  The student confirmed this image still showed LCD contents. Keeping the preview
+  Python program alive did not establish camera access. A preview-only control
+  also showed no camera scene and recovered normally. Native `socket`, `network`,
+  `camera` and `framebuf` modules were unavailable; no image endpoint was identified.
+  The spike outcome is unresolved camera access, not proven firmware incapability.
+- After the student manually selected AI Vision on the robot's touchscreen,
+  a system-channel-only LCD capture retrieved actual camera imagery over BLE.
+  USB absence was checked; no REPL or preview-mode commands were sent. The
+  complete 115,200-byte buffer took 29.781 s including setup (before JPEG
+  encoding). Its local 240x240 image visibly showed the requested VEX controller,
+  with LCD borders and a back-button overlay. This establishes conditional camera
+  access on the existing firmware. The later navigation test below established
+  Bluetooth mode selection too; unobstructed full field of view and repeated
+  camera acceptance remain unverified.
+- After a fresh power/readiness acknowledgement, the AIM-specific `0x65`
+  navigation command selected the AI Vision LCD camera view entirely over BLE.
+  Fresh screenshots verified Drive -> Projects -> Dashboard -> Drivetrain tile
+  -> AI Vision tile -> live camera. All five actions received valid `65 76`
+  acknowledgements; no motion/test controls were selected. USB was absent and
+  Python was not entered. The final 240x240 frame showed the VEX controller,
+  with a back-button overlay. Capture took 30.047 s before JPEG encoding, so
+  it does not satisfy the end-to-end 30-second target. `center` and `right` were
+  hardware tested; later work also verified `back`. `left` remains source/unit tested only. The older
+  V5 `0x2A` touch command was rejected with a valid-CRC `2a ff` NACK.
+- The repaired Rust discovery example independently found the robot exactly once
+  and returned after eight seconds. Eight BLE unit tests, six USB library tests,
+  and ten existing CLI tests passed locally during transport work. The spike's
+  fifty-three instructor-probe tests pass locally and cover PIN handling, framing,
+  pacing, overflow, deadlines, complete framebuffer reads, corrupt/misaddressed
+  blocks, empty layers, active preview lifetime, cancellation/cleanup and retaining
+  system notifications until subsequent Python work completes, and system-only
+  LCD capture without user-channel writes, and AIM navigation packet mappings,
+  CRC/NACK validation and no automatic retries after ambiguous failures, and
+  menu-icon confirmation with remembered carousel positions, unsupported
+  firmware/layouts, home recovery limits, Dashboard ID `32` versus camera ID `34`,
+  and leaving an already active camera alone.
+  A two-request pipeline failed its live control after 560 bytes; three/four
+  outstanding requests have simulated coverage only. Use sequential reads.
+- The instructor automatic selector recognized Dashboard and AI Vision from
+  two fresh icon-band captures per target and handled a remembered AI Vision
+  selection. Its live full route was `back, back, center, center`: 45.563 s
+  for navigation and 75.047 s including raw-frame download. The image showed
+  the VEX controller. ID `0` was home, `32` the Dashboard carousel, and `34`
+  the camera. A prior shortcut treating `32` as camera was rejected by visual
+  review and removed; no drivetrain test was selected. A separate fresh frame
+  at ID `34` also showed the controller. No Python, reboot or actuators were used.
+  Reconnecting with automatic selection recognized the active camera in 0.062 s,
+  sent no menu inputs, and captured a second verified controller image in
+  29.468 s before JPEG conversion.
+  Direct reads starting at the lower label rows returned a valid-CRC error
+  (`-41`); icon recognition now reads sequentially through row 103, about half
+  the data needed for text-label recognition. This is calibrated development
+  functionality, not complete Bluetooth release acceptance.
+- A later source-based check of CDC capture layer `8` retrieved a **native
+  640x480 JPEG camera image** in 3.453 s (13,641 bytes), with USB absent and
+  CRC/address/length checks. Visual review showed the VEX controller, with no
+  LCD border or back button. The JPEG was saved without resizing, cropping or
+  recompression. Source provenance was the official VEXcom JPEG-layer branch
+  for its separate camera product; AIM applicability was established by this
+  hardware result. Layer `1`, repeated while AI Vision was active, returned a
+  nonempty 240x240 RGB565 frame but still included the LCD UI.
+  Three further native captures passed from home screen `0`, with no navigation:
+  close-up controller (2.594 s), controller farther back (4.594 s) and the
+  student-confirmed replacement pink spinner (4.781 s). All were 640x480 without
+  UI overlays, over fresh BLE connections with USB absent. Python state reads
+  passed before/after the latter two, reporting 38% then 37% battery and stopped
+  true. Native camera feasibility is passed on this Windows/firmware combination.
+  The new instructor `--native-camera` path and existing local
+  RGB565 encoder have unit coverage, including atomic output, JPEG dimensions,
+  invalid/truncated responses, timeout cleanup and retained subscriptions.
+- The 0.2.0-dev Rust CLI now implements explicit Bluetooth selection, pairing/
+  native credential storage, doctor/info/exec/stop and native JPEG snapshots.
+  Its initial live doctor authenticated but got zero REPL bytes. A control with
+  Bleak forced to use indications also got zero bytes, while normal notifications
+  worked. `btleplug` 0.13.5 preferred indications for characteristics advertising
+  both. A vendored Windows fix prefers notifications; the next Rust doctor
+  reported ready, MicroPython core 1.22.0 / compatibility 3.4.0 / battery 35%.
+  A subsequent info read reported battery 34%, stopped true, heading and position.
+  Rust snap saved a verified 640x480 spinner image (21,656 bytes) in 26.754 s.
+  One intervening setup failed with missing characteristics; source inspection
+  found that a failed Windows service enumeration could return an empty list.
+  That API failure is now propagated. This does not establish the cause of every
+  future enumeration failure.
+  With a temporary throughput preference retained for the connection lifetime,
+  the next native CLI JPEG took 7.908 s (22,029 bytes), at an actual 15 ms
+  connection interval. The spinner was visually verified locally. A separate
+  post-capture info connection returned battery 33%, stopped true and position
+  `(0, 0)`. No actuation or reset was used.
+- Native camera feasibility does not complete the planned ten-frame release run.
+  No motor, kicker, LED, speaker or touchscreen input acceptance tests were
+  performed over BLE. Full sensor/actuator and reliability acceptance remains
+  pending; published 0.1.1 remains USB-only. The robot later slept after tests;
+  no shutdown/reset command was sent and no cause is claimed from that event.
+
+Procedure, local report commands, limitations and remaining acceptance criteria:
+[Bluetooth investigation](bluetooth.md). Local reports are in ignored `dist/`;
+they do not contain pairing codes. Do not commit the local Showtail trail.
+
 ## Verified on Linux
 
 | Area | Result |
@@ -68,9 +199,22 @@ Anything not listed here is **untested**.
 
 ## Not tested
 
-- Windows camera/actuators and macOS hardware, including camera permissions and signing/SmartScreen/Gatekeeper behaviour.
+- Windows USB camera/actuators and macOS hardware, including camera permissions and signing/SmartScreen/Gatekeeper behaviour.
 - Turns, `kicker.place/push`, harder kicks, longer or faster moves, `Ctrl-C` during a move.
 - AI Vision on real objects (tags, balls, barrels).
-- Bluetooth (the host used had none); several robots at once; many robots in one room.
+- Complete Bluetooth hardware/reliability acceptance and the ten-frame camera release run;
+  Linux/macOS Bluetooth hardware; several robots at once; many robots in one room.
 - Goose desktop end to end with a real robot.
-- Firmware versions other than 1.0.0-beta.2.
+- Other firmware versions beyond the USB and BLE versions specifically recorded above.
+
+## Local development validation
+
+The current change passed 18 combined-CLI tests, 13 USB-only CLI tests,
+three protocol tests (including the new camera-block CRC/truncation cases),
+14 combined transport tests, eight isolated Bluetooth transport tests,
+47 active Windows btleplug tests (three ignored upstream), and 53 instructor-probe
+tests. The checksum-verified development ZIP passed 20 installer assertions in
+each of PowerShell 7.6.7 and Windows PowerShell 5.1.26100.9711, including valid
+prerelease version handling and refusal of obsolete 0.1.0 builds. The updated
+skill validated. These local checks do not substitute for other-platform CI or
+physical sensor/actuator acceptance.
