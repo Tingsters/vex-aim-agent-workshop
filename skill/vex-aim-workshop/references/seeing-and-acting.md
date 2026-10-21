@@ -33,6 +33,11 @@ already linked AIMs. Missing firmware methods should produce a clear limitation,
 not a fabricated reading. Kicker and motion tests require clearance and an
 advance announcement, including expressive macros that move the robot.
 
+Verify visible screen effects before building an activity around them. On the
+tested early firmware, emoji/drawing calls returned successfully while the LCD
+stayed on its menu. Use lights or sounds as feedback when this happens, and
+explain the display limitation. Native camera photographs still work.
+
 Keep photos local and ignored by Git. Explain a result promptly in the student's
 words; do not append unrelated reporting work after every action. Showtail's
 automatic trail records their prompts and code; don't add photos or duplicate logs.
