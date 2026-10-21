@@ -9,6 +9,11 @@ Capture and open the image within the same agent turn. The agent can recognize
 ordinary objects, including things outside AIM's ball/barrel/robot model. Native
 AI Vision detections are a separate optional observation, not a prerequisite.
 
+A VEX controller is a useful example: the agent can recognize it from the photo
+even when AIM's native detector returns no objects. Explain which recognition
+path produced the answer. Do not treat an empty native result as a failed camera
+capture or claim that the robot has learned a new object class.
+
 For "turn until you're looking at my controller", inspect a fresh image, announce
 one small bounded turn, wait for completion, then inspect a second image. Stop
 when the request is satisfied or evidence is unclear. Preserve physical readiness
