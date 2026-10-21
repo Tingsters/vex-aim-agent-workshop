@@ -4,6 +4,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      cli_version:
+        description: 'CLI release to install, for example 0.3.0-rc.5 (empty selects latest stable)'
+        required: false
+        type: string
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -28,8 +34,14 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          CLI_VERSION: ${{ inputs.cli_version }}
         run: |
-          gh release download --repo Tingsters/vexaim-cli --dir dist/cli-assets \
+          release=()
+          if [ -n "$CLI_VERSION" ]; then
+            [[ "$CLI_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]] || exit 1
+            release+=("v$CLI_VERSION")
+          fi
+          gh release download "${release[@]}" --repo Tingsters/vexaim-cli --dir dist/cli-assets \
             --pattern 'vexaim-${{ matrix.target }}*' --pattern VERSION \
             --pattern SHA256SUMS --pattern install.sh --pattern install.ps1
       - name: Test Unix installation and failure handling
@@ -42,17 +54,39 @@ jobs:
           ./dev/test-install.ps1 -AssetsDir dist/cli-assets
           powershell -NoProfile -ExecutionPolicy Bypass -File dev/test-install.ps1 -AssetsDir dist/cli-assets
           if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell 5.1 integration failed' }
-      - name: Check latest-stable Unix bootstrap
+      - name: Check online Unix bootstrap
         if: runner.os != 'Windows'
-        run: cat install.sh | sh -s -- --home "$PWD/dist/online-smoke" --agents codex
-      - name: Check latest-stable Windows bootstrap
+        env:
+          CLI_VERSION: ${{ inputs.cli_version }}
+        run: |
+          if [ -n "$CLI_VERSION" ]; then
+            cat install.sh | sh -s -- --home "$PWD/dist/online-smoke" --agents codex \
+              --base-url "https://github.com/Tingsters/vexaim-cli/releases/download/v$CLI_VERSION"
+          else
+            cat install.sh | sh -s -- --home "$PWD/dist/online-smoke" --agents codex
+          fi
+          actual=$(dist/online-smoke/.agents/skills/vex-aim/bin/vexaim --version)
+          expected=$(tr -d '\r\n' < dist/cli-assets/VERSION)
+          test "$actual" = "vexaim $expected"
+      - name: Check online Windows bootstrap
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          CLI_VERSION: ${{ inputs.cli_version }}
         run: |
-          Get-Content -Raw install.ps1 | iex
-          powershell -NoProfile -ExecutionPolicy Bypass -Command 'Get-Content -Raw install.ps1 | iex'
+          if ($env:CLI_VERSION) {
+            $baseUrl="https://github.com/Tingsters/vexaim-cli/releases/download/v$env:CLI_VERSION"
+            & ([scriptblock]::Create((Get-Content -Raw install.ps1))) -BaseUrl $baseUrl
+            powershell -NoProfile -ExecutionPolicy Bypass -Command '& ([scriptblock]::Create((Get-Content -Raw install.ps1))) -BaseUrl ("https://github.com/Tingsters/vexaim-cli/releases/download/v"+$env:CLI_VERSION)'
+          } else {
+            Get-Content -Raw install.ps1 | iex
+            powershell -NoProfile -ExecutionPolicy Bypass -Command 'Get-Content -Raw install.ps1 | iex'
+          }
           if ($LASTEXITCODE -ne 0) { throw 'Windows PowerShell 5.1 online install failed' }
           if (-not (Test-Path "$HOME/.agents/skills/vex-aim-workshop/references/activities.md")) { throw 'Streamed installation did not install teaching references' }
+          $actual=& "$HOME/.agents/skills/vex-aim/bin/vexaim.exe" --version
+          $expected=(Get-Content -Raw dist/cli-assets/VERSION).Trim()
+          if ($LASTEXITCODE -ne 0 -or "$actual" -ne "vexaim $expected") { throw 'Online installation selected a different CLI release' }
       - name: shellcheck
         if: runner.os == 'Linux'
         run: |
