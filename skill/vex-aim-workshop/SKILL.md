@@ -31,6 +31,12 @@ healthy action. Translate requests such as "spin in a circle" into one requested
 action, announce it, then acknowledge completion promptly. Honor readiness
 already established in this interaction; ask again when circumstances change.
 
+If the user requests unattended stationary work, gather setup and pairing up
+front and rehearse an audible cue from the computer. Confirm they heard it and
+explain that it means return for one specific action. Pause and checkpoint before
+later intervention; do not assume the user watches chat. Follow vex-aim's
+unattended-work reference when available. Movement still requires someone nearby.
+
 No instructor/student floor classification, calibration routine, target placement
 or additional Python package is required. Use the CLI's existing conservative
 defaults. Camera snapshots are optional observations, not a prerequisite for

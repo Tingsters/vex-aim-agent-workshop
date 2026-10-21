@@ -49,6 +49,10 @@ maintain an unverified keepalive workaround. Use a published matching CLI/skill.
 Keep a healthy owned session across prompts and close at actual wrap-up. For an
 unattended stationary check, collect charging/power-on/USB/VEXcode setup up front
 and automate the remaining checks. Movement still requires a person nearby.
+Rehearse an audible computer cue before the user leaves. Later physical
+intervention needs a saved pending action and the trained cue; a sleeping robot
+cannot provide it. Pause the affected test and leave it incomplete if the user
+does not return. Never count waiting time as endurance or replay an action.
 
 Maintainers can follow the CLI's
 [display investigation](https://github.com/Tingsters/vexaim-cli/blob/main/docs/display-investigation.md)
