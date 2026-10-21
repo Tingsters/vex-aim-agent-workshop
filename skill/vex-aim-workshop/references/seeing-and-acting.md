@@ -33,10 +33,20 @@ already linked AIMs. Missing firmware methods should produce a clear limitation,
 not a fabricated reading. Kicker and motion tests require clearance and an
 advance announcement, including expressive macros that move the robot.
 
-Verify visible screen effects before building an activity around them. On the
-tested early firmware, emoji/drawing calls returned successfully while the LCD
-stayed on its menu. Use lights or sounds as feedback when this happens, and
-explain the display limitation. Native camera photographs still work.
+Verify visible screen effects before building an activity around them. The
+0.3.0-rc.5 CLI fixes hidden Bluetooth drawing on the tested early firmware by
+activating and maintaining the program display. Use the matching CLI/basic skill
+and a reusable session; students can ask for a face, message or drawing directly.
+Use named emojis and contrasting text/background colors. Stop/close or one minute
+without activity returns the display to its menu. Native camera photographs
+remain independent. On older binaries or unsupported firmware, explain the
+actual limitation and use lights/sounds as feedback instead.
+
+Maintainers can follow the CLI's
+[display investigation](https://github.com/Tingsters/vexaim-cli/blob/main/docs/display-investigation.md)
+for the protocol evidence and diagnostic matrix. Keep developer probes out of
+student setup. The fix works over Bluetooth without a saved project; USB is a
+diagnostic comparison only.
 
 Keep photos local and ignored by Git. Explain a result promptly in the student's
 words; do not append unrelated reporting work after every action. Showtail's
