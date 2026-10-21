@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       cli_version:
-        description: 'CLI release to install, for example 0.3.0-rc.5 (empty selects latest stable)'
+        description: 'CLI release to install, for example 0.3.0-rc.6 (empty selects latest stable)'
         required: false
         type: string
         default: ''
