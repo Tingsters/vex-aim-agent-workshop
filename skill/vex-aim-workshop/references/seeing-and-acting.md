@@ -42,6 +42,13 @@ without activity returns the display to its menu. Native camera photographs
 remain independent. On older binaries or unsupported firmware, explain the
 actual limitation and use lights/sounds as feedback instead.
 
+Use 0.3.0-rc.6 or newer for sustained Bluetooth activities. Its separate session
+System Alive heartbeat works independently of visible screen effects on verified
+firmware; students do not need to request keepalive or keep touching the robot.
+Keep a healthy owned session across prompts and close at actual wrap-up. For an
+unattended stationary check, collect charging/power-on/USB/VEXcode setup up front
+and automate the remaining checks. Movement still requires a person nearby.
+
 Maintainers can follow the CLI's
 [display investigation](https://github.com/Tingsters/vexaim-cli/blob/main/docs/display-investigation.md)
 for the protocol evidence and diagnostic matrix. Keep developer probes out of
