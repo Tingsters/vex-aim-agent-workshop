@@ -57,6 +57,10 @@ For Bluetooth, tell the agent the exact robot name and keep VEXcode closed.
 Pairing codes go into a masked local terminal, never into chat. The agent reuses
 the connection across requests. If the robot sleeps, it needs switching on again.
 
+For experimental 0.3.0-rc.6 testing, including Mac verification, follow the
+[pinned prerelease instructions](docs/bluetooth.md). The unversioned commands
+above install the stable CLI. Sleep prevention remains unresolved in rc.6.
+
 ## Explore
 
 Try "spin in a circle", "make up a short dance", or an idea of your own.

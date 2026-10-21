@@ -42,6 +42,14 @@ without activity returns the display to its menu. Native camera photographs
 remain independent. On older binaries or unsupported firmware, explain the
 actual limitation and use lights/sounds as feedback instead.
 
+Sustained Bluetooth power management is still under investigation. The experimental
+rc.6 release received successful System Alive replies but still lost the robot
+around five minutes. Do not promise that it prevents sleep or ask students to
+maintain an unverified keepalive workaround. Use a published matching CLI/skill.
+Keep a healthy owned session across prompts and close at actual wrap-up. For an
+unattended stationary check, collect charging/power-on/USB/VEXcode setup up front
+and automate the remaining checks. Movement still requires a person nearby.
+
 Maintainers can follow the CLI's
 [display investigation](https://github.com/Tingsters/vexaim-cli/blob/main/docs/display-investigation.md)
 for the protocol evidence and diagnostic matrix. Keep developer probes out of
