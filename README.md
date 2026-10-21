@@ -3,6 +3,14 @@
 Build robot ideas through ordinary prompts with Goose, Codex or Claude Code.
 Ask it to move, react, play sounds, change lights, or take a photograph.
 
+The upcoming CLI command release adds native strafing, vector motion, device
+commands and camera observations for agents. With a matching candidate binary
+and skill, an agent can capture a frame, open it, decide on a small action, then
+inspect another frame. See the [visual activity guide](skill/vex-aim-workshop/references/seeing-and-acting.md).
+Students continue using ordinary prompts; no additional vision API account is
+needed. Stable installers select the latest stable CLI, so prerelease testing
+requires selecting the candidate explicitly.
+
 This repository contains the **workshop teaching skill and activities**. The
 standalone [vexaim CLI](https://github.com/Tingsters/vexaim-cli) provides robot
 communication, prebuilt binaries and a general-purpose robot skill.

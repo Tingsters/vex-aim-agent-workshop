@@ -34,7 +34,11 @@ already established in this interaction; ask again when circumstances change.
 No instructor/student floor classification, calibration routine, target placement
 or additional Python package is required. Use the CLI's existing conservative
 defaults. Camera snapshots are optional observations, not a prerequisite for
-every movement. Automatic visual movement correction is not available.
+every movement. For visual tasks, follow vex-aim's camera observation reference:
+capture a fresh image, open it with the agent's native image reader, decide on
+one small finite action, wait, and inspect another fresh image. No extra image
+API account or pretrained robot class is required. Do not infer exact floor
+distances from an uncalibrated picture or promise real-time camera correction.
 
 ## Teach through experiments
 
@@ -46,8 +50,9 @@ basic skill's recovery instructions; do not replay uncertain movement.
 
 See `references/activities.md` for optional starting ideas. These are examples,
 not a compulsory sequence. Students can combine motion, lights, sound, sensors
-and photographs in creative ways. Kit-sign navigation is a future capability;
-do not promise it or substitute required calibration tasks.
+and photographs in creative ways. Use native VEX movement, strafing and vector
+operations through the robot skill; students keep using their own prompts.
+See `references/seeing-and-acting.md` for visual experiments and their limits.
 
 Keep photos and the student's local work trail on this computer unless they
 explicitly request sharing. Follow the project's Showtail instructions; automatic
