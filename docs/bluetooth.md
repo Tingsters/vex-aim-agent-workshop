@@ -10,12 +10,12 @@ commands or disclose codes in chat. For wireless-only testing, unplug USB first.
 
 The agent reuses one connection across prompts. Native camera snapshots do not
 require an AI Vision LCD mode, reset or preview. If the robot sleeps, switch it
-on again when the agent gives a readiness cue. With 0.3.0-rc.6 on the verified
-firmware, an owned session automatically sends acknowledged System Alive
-requests, even while the LCD is on its menu. No student keepalive command or
-extra program is needed. Stop/display expiry preserve session liveness; close
-and 30 minutes without client work end it. Once powered off, the AIM still needs
-a person to switch it back on.
+on again when the agent gives a readiness cue. Sensor/motor traffic and a visible
+face have not reliably prevented sleep. The unreleased rc.6 candidate's System
+Alive probes also failed hardware endurance despite successful acknowledgments.
+Do not recommend it as a sleep fix or infer sleep prevention from cached health.
+Once powered off, the AIM needs a person to switch it back on. The CLI's 30-minute
+client inactivity deadline closes its owner; it is separate from robot sleep.
 
 With a matching 0.3.0-rc.5 or newer CLI/basic skill, students can also ask for a
 happy face, message or drawing over Bluetooth. The tool activates and maintains
@@ -27,13 +27,13 @@ For the prerelease, install this workshop first, then select the matching CLI
 and basic skill explicitly. Windows PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Tingsters/vexaim-cli/main/install.ps1))) -Version 0.3.0-rc.6
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Tingsters/vexaim-cli/main/install.ps1))) -Version 0.3.0-rc.5
 ```
 
 macOS (Apple Silicon or Intel) and Linux:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/Tingsters/vexaim-cli/main/install.sh | sh -s -- --version 0.3.0-rc.6
+curl -fsSL https://raw.githubusercontent.com/Tingsters/vexaim-cli/main/install.sh | sh -s -- --version 0.3.0-rc.5
 ```
 
 Start a new agent session after installing. Rerunning the unversioned workshop
