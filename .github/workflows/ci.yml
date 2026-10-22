@@ -30,6 +30,8 @@ jobs:
           python-version: '3.12'
       - name: Check teaching skill and documentation
         run: python dev/check-workshop.py
+      - name: Execute workshop behavior fixtures without hardware
+        run: python -m unittest discover -s dev -p test_workshop_sim.py -v
       - name: Download native published CLI assets
         shell: bash
         env:

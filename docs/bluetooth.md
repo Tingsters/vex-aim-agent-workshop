@@ -20,11 +20,25 @@ Do not recommend it as a sleep fix or infer sleep prevention from cached health.
 Once powered off, the AIM needs a person to switch it back on. The CLI's 30-minute
 client inactivity deadline closes its owner; it is separate from robot sleep.
 
+The Windows firmware 1.0.4 follow-up compares the unchanged published CLI with
+the official VEXcode application before adding maintenance traffic. It also
+rehearses an audible computer cue while the operator is present, so later
+physical intervention does not rely on watching the console. See the
+[investigation and measured status](https://github.com/Tingsters/vexaim-cli/blob/main/docs/firmware-1.0.4-investigation.md).
+Do not assume that an upgrade or installed VEX driver bundle proves a sleep fix.
+On the tested 1.0.4 robot, a private SDK sleep-disable setter also read back
+`True` without preventing the loss. It is a developer experiment, not an
+additional student setup step or verified workaround.
+One combined system-REPL/SDK mechanism subsequently passed 20 quiet minutes.
+The matching CLI integration is being validated with a finite power lease;
+that mechanism control alone does not certify the ordinary workshop workflow.
+
 With a matching 0.3.0-rc.5 or newer CLI/basic skill, students can also ask for a
 happy face, message or drawing over Bluetooth. The tool activates and maintains
 the program display automatically; no saved project, menu sequence or USB cable
 is required. Reuse the connection. Stop/close or one minute without activity
-returns the LCD to its menu. Camera photographs remain independent of LCD mode.
+ends the drawing. The rc.7 power candidate may then show REPL Mode until the
+session closes. Camera photographs remain independent of LCD mode.
 
 For the prerelease, install this workshop first, then select the matching CLI
 and basic skill explicitly. Windows PowerShell:

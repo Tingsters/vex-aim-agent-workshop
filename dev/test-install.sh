@@ -20,6 +20,9 @@ for agent in .agents .claude; do
   check test -x "$H1/$agent/skills/vex-aim/bin/vexaim"
   check test -f "$H1/$agent/skills/vex-aim-workshop/SKILL.md"
   check test ! -d "$H1/$agent/skills/vex-aim-workshop/bin"
+  for reference in "$HERE"/skill/vex-aim-workshop/references/*.md; do
+    check cmp "$reference" "$H1/$agent/skills/vex-aim-workshop/references/$(basename "$reference")"
+  done
   check test "$("$H1/$agent/skills/vex-aim/bin/vexaim" --version)" = "vexaim $(cat "$ASSETS/VERSION")"
 done
 check install_to "$H1" --from-dir "$ASSETS"
