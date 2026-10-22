@@ -46,6 +46,11 @@ Sustained Bluetooth power management is still under investigation. The experimen
 rc.6 release received successful System Alive replies but still lost the robot
 around five minutes. Do not promise that it prevents sleep or ask students to
 maintain an unverified keepalive workaround. Use a published matching CLI/skill.
+After firmware updates, an older CLI can disable monitoring or reject camera/
+display because it does not recognize the revision. Read its reported device
+versions and check compatibility before suggesting USB changes or menu resets.
+The Windows 1.0.4 investigation has not yet established a sleep fix, including
+with an idle official VEXcode connection or a visible built-in REPL screen.
 Keep a healthy owned session across prompts and close at actual wrap-up. For an
 unattended stationary check, collect charging/power-on/USB/VEXcode setup up front
 and automate the remaining checks. Movement still requires a person nearby.
