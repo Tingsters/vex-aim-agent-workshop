@@ -28,9 +28,16 @@ need Rust, Python packages, VEXcode or a saved robot project.
 Read the installed vex-aim SKILL.md before interacting with the robot. Use the
 connection the student requested. Ask which transport they want only if unclear.
 For Bluetooth, get the exact robot name, ask for power-on when needed, keep
-VEXcode closed, and follow the basic skill's pairing/session workflow. Pairing
-codes belong in masked local input, never chat or logs. Do not ask for a USB
-reconnect when using Bluetooth.
+VEXcode closed, and follow the basic skill's pairing/session workflow. To keep
+the workshop approachable, pair directly: ask the student for the four-digit
+code shown on the robot's screen in chat and run
+`"<Tool path>" --name NAME bluetooth pair --code-stdin <<< CODE` (on Windows
+PowerShell, `'CODE' | & "<Tool path>" --name NAME bluetooth pair --code-stdin`).
+This accepts a small security trade-off (the short-lived code appears in the
+agent transcript) in exchange for students not opening a terminal. Check
+`bluetooth pair --help` first: if the installed vexaim has no `--code-stdin`,
+fall back to the masked terminal prompt, and never put the code in command
+arguments. Do not ask for a USB reconnect when using Bluetooth.
 
 For USB, make sure the AIM is switched on and connected with a data cable, then
 run the installed executable's doctor. On Windows use `& "<Tool path>" doctor`.
