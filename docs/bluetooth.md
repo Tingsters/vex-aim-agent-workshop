@@ -4,9 +4,12 @@ The released standalone vexaim CLI provides Bluetooth. Run this workshop's
 installer to install its latest stable executable and matching basic skill,
 then start a new agent session to discover both skills.
 
-Switch the AIM on, close VEXcode, and tell the agent the exact robot name. Pairing
-uses a masked local terminal prompt and the OS vault. Students do not type
-commands or disclose codes in chat. For wireless-only testing, unplug USB first.
+Switch the AIM on, close VEXcode, and tell the agent the exact robot name. The agent
+asks for the four-digit code on the robot's screen and pairs with
+`bluetooth pair --code-stdin`; the credential is stored in the OS vault. This
+trades a little security (the short-lived code appears in the agent transcript)
+for not making students open a terminal. Older vexaim releases lack the flag and
+need the masked terminal prompt instead. For wireless-only testing, unplug USB first.
 
 The agent reuses one connection across prompts. Native camera snapshots do not
 require an AI Vision LCD mode, reset or preview. If the robot sleeps, switch it
