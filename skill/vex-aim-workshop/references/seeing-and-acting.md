@@ -51,6 +51,9 @@ display because it does not recognize the revision. Read its reported device
 versions and check compatibility before suggesting USB changes or menu resets.
 The Windows 1.0.4 investigation has not yet established a sleep fix, including
 with an idle official VEXcode connection or a visible built-in REPL screen.
+Even the private SDK sleep-disable setting read back `True` on the tested 1.0.4
+robot without preventing link loss. Keep that experiment out of student setup;
+use the CLI's measured hardware status instead of a method name as evidence.
 Keep a healthy owned session across prompts and close at actual wrap-up. For an
 unattended stationary check, collect charging/power-on/USB/VEXcode setup up front
 and automate the remaining checks. Movement still requires a person nearby.

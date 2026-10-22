@@ -23,6 +23,9 @@ rehearses an audible computer cue while the operator is present, so later
 physical intervention does not rely on watching the console. See the
 [investigation and measured status](https://github.com/Tingsters/vexaim-cli/blob/main/docs/firmware-1.0.4-investigation.md).
 Do not assume that an upgrade or installed VEX driver bundle proves a sleep fix.
+On the tested 1.0.4 robot, a private SDK sleep-disable setter also read back
+`True` without preventing the loss. It is a developer experiment, not an
+additional student setup step or verified workaround.
 
 With a matching 0.3.0-rc.5 or newer CLI/basic skill, students can also ask for a
 happy face, message or drawing over Bluetooth. The tool activates and maintains
