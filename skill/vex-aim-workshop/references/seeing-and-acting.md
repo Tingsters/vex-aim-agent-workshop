@@ -49,8 +49,10 @@ maintain an unverified keepalive workaround. Use a published matching CLI/skill.
 After firmware updates, an older CLI can disable monitoring or reject camera/
 display because it does not recognize the revision. Read its reported device
 versions and check compatibility before suggesting USB changes or menu resets.
-The Windows 1.0.4 investigation has not yet established a sleep fix, including
-with an idle official VEXcode connection or a visible built-in REPL screen.
+The Windows 1.0.4 investigation now has one passing 20-minute mechanism control
+using an owned system REPL and SDK setting together. The CLI integration adds a
+finite power lease; normal camera/display/stop recovery and clean-boot acceptance
+are still pending. The idle official connection and REPL screen alone failed.
 Even the private SDK sleep-disable setting read back `True` on the tested 1.0.4
 robot without preventing link loss. Keep that experiment out of student setup;
 use the CLI's measured hardware status instead of a method name as evidence.

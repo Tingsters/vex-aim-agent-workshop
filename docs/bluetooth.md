@@ -26,6 +26,9 @@ Do not assume that an upgrade or installed VEX driver bundle proves a sleep fix.
 On the tested 1.0.4 robot, a private SDK sleep-disable setter also read back
 `True` without preventing the loss. It is a developer experiment, not an
 additional student setup step or verified workaround.
+One combined system-REPL/SDK mechanism subsequently passed 20 quiet minutes.
+The matching CLI integration is being validated with a finite power lease;
+that mechanism control alone does not certify the ordinary workshop workflow.
 
 With a matching 0.3.0-rc.5 or newer CLI/basic skill, students can also ask for a
 happy face, message or drawing over Bluetooth. The tool activates and maintains
