@@ -66,8 +66,14 @@ https://github.com/Tingsters/vexaim-cli. Workshop CI validates its wrappers and
 skills against released binaries. Do not reintroduce a Rust workspace or a copied
 generic skill. Follow skill-creator guidance when changing skills.
 
-Movement requires a clear area, a person near the physical switch and an advance
-announcement. Preserve readiness within an interaction; do not replay uncertain
-movements. Keep photos, credentials and the student's Showtail trail local.
+For workshop play, establish the floor/play area once and follow the workshop
+skill's interaction policy. A student's idea authorizes the reasonable movement,
+kicker actions and effects needed to perform it. Announce briefly and execute
+complete routines without repeated readiness or observation confirmations.
+Ordinary bumps into kit objects or sneakers are normal play. Use explicit brisk
+workshop speeds and finite robot-side execution; never replay uncertain movement.
+The workshop's pace/perception policy replaces the basic skill's conservative
+defaults; its transport, firmware and recovery requirements still apply. Setup
+itself remains stationary. Keep photos, credentials and the student's Showtail trail local.
 Never upload them without explicit consent. Do not change shell profiles or agent
 settings. Ask before administrator actions or installing Rust.

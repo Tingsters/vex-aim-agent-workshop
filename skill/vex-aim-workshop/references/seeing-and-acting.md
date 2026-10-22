@@ -1,76 +1,92 @@
-# See, decide, try, compare
+# Choose where the seeing happens
 
-Use the separate vex-aim skill's device and agent-vision references. Students ask
-ordinary questions; the agent handles commands, connections and opening images.
-These experiments need the matching CLI command release with `camera observe`.
+Students ask ordinary questions. The agent handles images and scripts; they
+don't need an image API account, a live stream or an extra Python package.
 
-Invite the student to put an object in front of AIM and ask "What can you see?"
-Capture and open the image within the same agent turn. The agent can recognize
-ordinary objects, including things outside AIM's ball/barrel/robot model. Native
-AI Vision detections are a separate optional observation, not a prerequisite.
+## Native robot vision for fast feedback
 
-A VEX controller is a useful example: the agent can recognize it from the photo
-even when AIM's native detector returns no objects. Explain which recognition
-path produced the answer. Do not treat an empty native result as a failed camera
-capture or claim that the robot has learned a new object class.
+Prefer native AI Vision for sports balls, blue/orange barrels, AIM robots,
+AprilTags and configured color/code signatures. Search, align, approach, react
+and finish in one finite robot script. Feedback stays on AIM, typically with
+50 ms waits, rather than crossing Bluetooth to the language model each time.
+See `references/fast-behaviors.md` for a complete search/collect/celebrate example.
 
-For "turn until you're looking at my controller", inspect a fresh image, announce
-one small bounded turn, wait for completion, then inspect a second image. Stop
-when the request is satisfied or evidence is unclear. Preserve physical readiness
-and never repeat movement whose delivery is uncertain. A slow Bluetooth snapshot
-loop is an experiment in observation and decisions, not a real-time driving system.
+Native detections are 320x240 pixels. Filter empty results and the requested
+class/ID; use bearing for direction and the appropriate cargo predicate for
+collection. Pixel width is a proximity cue, not a millimetre range measurement.
+The native model cannot recognize an arbitrary controller, person or drawing.
+Configured colors/codes must actually exist; don't invent a trained signature.
 
-For "slide sideways and keep facing me", use native strafing or vector motion.
-Ask for a prediction and compare before/after images. Explain wheel slip and why
-different floors change results. The built-in gyro and odometry report what the
-robot estimates; an image alone does not establish a distance in millimetres.
-No floor labels, calibration mat or separate student Python setup is required.
+## Agent image understanding for meaning
 
-Other ideas: touch-controlled lights; compare acceleration when gently tilting a
-stationary robot; recognize a color and choose an emoji; look for an AprilTag;
-watch a button on an already connected One Stick; exchange messages between two
-already linked AIMs. Missing firmware methods should produce a clear limitation,
-not a fabricated reading. Kicker and motion tests require clearance and an
-advance announcement, including expressive macros that move the robot.
+Use the companion skill's camera transport instructions to capture a native
+photograph, normally `--json --session ID camera observe`. Open the returned
+absolute image path with Codex `view_image` or Claude Code `Read` in that same
+turn. A filename, JSON detections or a desktop preview is not seeing the image.
+If the installed CLI lacks this command, use its documented native snapshot
+workflow when supported, or explain the version limitation.
 
-Verify visible screen effects before building an activity around them. The
-0.3.0-rc.5 CLI fixes hidden Bluetooth drawing on the tested early firmware by
-activating and maintaining the program display. Use the matching CLI/basic skill
-and a reusable session; students can ask for a face, message or drawing directly.
-Use named emojis and contrasting text/background colors. Stop/close or one minute
-without activity ends the drawing. The rc.7 power candidate may then show REPL
-Mode until session close. Native camera photographs
-remain independent. On older binaries or unsupported firmware, explain the
-actual limitation and use lights/sounds as feedback instead.
+The agent can recognize a VEX controller, read a clue, compare objects, interpret
+gestures or design a response to a scene. Empty native detections do not mean
+that the photograph failed. Do not claim the robot learned a new native class.
 
-Sustained Bluetooth power management is still under investigation. The experimental
-rc.6 release received successful System Alive replies but still lost the robot
-around five minutes. Do not promise that it prevents sleep or ask students to
-maintain an unverified keepalive workaround. Use a published matching CLI/skill.
-After firmware updates, an older CLI can disable monitoring or reject camera/
-display because it does not recognize the revision. Read its reported device
-versions and check compatibility before suggesting USB changes or menu resets.
-The Windows 1.0.4 investigation now has one passing 20-minute mechanism control
-using an owned system REPL and SDK setting together. The CLI integration adds a
-finite power lease; normal camera/display/stop recovery and clean-boot acceptance
-are still pending. The idle official connection and REPL screen alone failed.
-Even the private SDK sleep-disable setting read back `True` on the tested 1.0.4
-robot without preventing link loss. Keep that experiment out of student setup;
-use the CLI's measured hardware status instead of a method name as evidence.
-Keep a healthy owned session across prompts and close at actual wrap-up. For an
-unattended stationary check, collect charging/power-on/USB/VEXcode setup up front
-and automate the remaining checks. Movement still requires a person nearby.
-Rehearse an audible computer cue before the user leaves. Later physical
-intervention needs a saved pending action and the trained cue; a sleeping robot
-cannot provide it. Pause the affected test and leave it incomplete if the user
-does not return. Never count waiting time as endurance or replay an action.
+After one useful observation, plan and execute the whole requested sequence.
+For "go to my controller and wave", use an approximate approach, the kicker
+wave and an expressive ending in one finite script. Ordinary contact is fine.
+Do not default to repeated 5 cm movements, camera transfers and student checks.
+Geometry can be approximate; describe it as an estimate. When the image doesn't
+support a route, get the missing information rather than inventing distance.
 
-Maintainers can follow the CLI's
-[display investigation](https://github.com/Tingsters/vexaim-cli/blob/main/docs/display-investigation.md)
-for the protocol evidence and diagnostic matrix. Keep developer probes out of
-student setup. The fix works over Bluetooth without a saved project; USB is a
-diagnostic comparison only.
+Another image is useful when a target moved, the first image is ambiguous,
+a search needs a new view, or a later story/game checkpoint needs interpretation.
+It is not mandatory after each motion or to verify every effect. Laptop snapshots
+are observations for planning, not a real-time camera servo.
 
-Keep photos local and ignored by Git. Explain a result promptly in the student's
-words; do not append unrelated reporting work after every action. Showtail's
-automatic trail records their prompts and code; don't add photos or duplicate logs.
+## Combine semantic choices with native tracking
+
+The agent can choose "the orange barrel beside the controller" from a scene,
+then use native barrel feedback for execution. If several orange barrels are
+visible, retain the spatial selection instead of silently switching to whichever
+is largest. Use a supported tag or configured color as a tracking proxy only
+when it actually identifies the target. If no reliable native proxy exists,
+execute the agent-planned sequence and inspect again at a useful checkpoint.
+
+For people games, use introduced participants and agreed visible cues such as
+name badges or clothing. Let the agent choose greetings, gestures or story
+roles. Don't describe this as AIM's native face recognition or autonomous model
+training. Use the session's stated photo consent; ordinary agent image analysis
+needs no separate upload service. Keep reference photos local and temporary.
+
+## Create and show original artwork
+
+A student can ask for an invented character, a camera-inspired portrait or
+illustrations for a story. Generate compact VEX screen drawing code using lines,
+circles, rectangles, text and colors, then show it in one execution. Hide the
+AI Vision/emoji overlays before drawing. The LCD is 240x240; it is independent
+of the 640x480 camera photograph and the 320x240 detector coordinates.
+See `references/fast-behaviors.md` for an original space-cat example.
+This is agent-created artwork, not merely selecting a built-in emoji.
+
+Use named emoji constants and contrasting text/background colors. The companion
+skill's matching display-capable CLI handles program ownership over Bluetooth;
+no saved project, reset or menu navigation is needed. Create custom variables
+inside each script because a display/system-REPL transition can replace them.
+Keep the session open after a routine and stop wheels through the robot API so
+the final drawing can remain. The CLI's display lifetime still applies.
+
+New PNG asset uploads remain gated until their firmware encoding is verified.
+Don't make a student use VEXcode, bypass the gate or report an unsupported upload
+as successful. Prefer generated drawing primitives; existing supported image
+slots can also be used when they already contain the required artwork.
+
+## Recover without derailing play
+
+Keep transport/firmware troubleshooting and sustained-power evidence in the
+basic skill. A healthy session is reused across prompts; don't start private
+SDK experiments or promise that traffic prevents sleep. After a link failure,
+recover live state without replaying the old movement. Ask for power-on only
+if required. Unattended maintenance uses the basic skill's up-front setup and
+rehearsed computer cue; it is separate from these ordinary play activities.
+
+Keep photographs, scripts and the student's Showtail trail local unless sharing
+is explicitly requested. Don't add photos to Git or duplicate automatic capture.

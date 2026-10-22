@@ -5,8 +5,10 @@ Ask it to move, react, play sounds, change lights, or take a photograph.
 
 The upcoming CLI command release adds native strafing, vector motion, device
 commands and camera observations for agents. With a matching candidate binary
-and skill, an agent can capture a frame, open it, decide on a small action, then
-inspect another frame. See the [visual activity guide](skill/vex-aim-workshop/references/seeing-and-acting.md).
+and skill, an agent can compose a whole behavior in one robot script. Native
+AI Vision handles kit-target feedback on the robot; the agent opens a photograph
+when a task needs scene understanding, then plans a complete useful sequence.
+See the [visual activity guide](skill/vex-aim-workshop/references/seeing-and-acting.md).
 Students continue using ordinary prompts; no additional vision API account is
 needed. Stable installers select the latest stable CLI, so prerelease testing
 requires selecting the candidate explicitly.
@@ -67,13 +69,17 @@ above install the stable CLI. Sleep prevention remains unresolved in rc.6.
 
 Try "spin in a circle", "make up a short dance", or an idea of your own.
 Students do not need to learn CLI commands, identify their floor, arrange
-calibration targets, or install developer tools. Before motion, clear the floor
-and have someone near the power switch. Keep camera photographs local unless
-you explicitly choose to share them.
+calibration targets, or install developer tools. Set up a floor/play area once,
+then ask for complete behaviors: "find a ball, kick it and celebrate" or
+"make a dance with sideways moves and lights". The agent announces and acts
+without repeated permission or observation checks. Ordinary bumps are part of
+play. Keep camera photographs local unless you explicitly choose to share them.
 
-The current turn default is conservative. Physical accuracy varies by surface;
-automatic camera-based movement correction is not enabled. Software CI does not
-prove hardware accuracy. [Current movement evidence](docs/workshop-motion.md).
+The workshop explicitly chooses brisk speeds: 150 mm/s and 90 degrees/s, adjusting
+for the task. The CLI's general defaults stay unchanged. Native vision can guide
+movement inside a script; laptop photographs support agent planning rather than
+live streaming. Physical accuracy varies by surface, and simulation does not
+prove hardware accuracy. [Movement guidance](docs/workshop-motion.md).
 
 ## Installer options and offline installation
 

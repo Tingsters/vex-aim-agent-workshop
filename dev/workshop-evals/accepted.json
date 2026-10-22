@@ -1,0 +1,171 @@
+{
+  "description": "Frozen independent delegate proposals. All scenes, participants and robot observations are synthetic. No robot commands were executed.",
+  "round": 2,
+  "cases": [
+    {
+      "id": "spin",
+      "student_prompt": "Spin in a circle and show a happy face.",
+      "say_before": "I'll spin left once, then show a happy face.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "exec",
+          "timeout": 30,
+          "source": "clock = Timer()\n\ndef finish_motion():\n    while not robot.is_stopped():\n        if clock.time(MSEC) >= 20000:\n            raise RuntimeError(\"Routine deadline reached\")\n        wait(20, MSEC)\n\ntry:\n    robot.turn_for(LEFT, 360, 90, DPS, False)\n    finish_motion()\n    robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\n    print(\"Full left turn finished; HAPPY requested\")\nfinally:\n    robot.stop_all_movement()\n"
+        }
+      ],
+      "say_after": "The turn routine finished and requested the happy face."
+    },
+    {
+      "id": "fetch",
+      "student_prompt": "Find the orange barrel, fetch it, then celebrate.",
+      "say_before": "I'll look for the orange barrel, collect it, then celebrate with lights, a chirp and a happy face.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "exec",
+          "timeout": 30,
+          "source": "clock = Timer()\nseen = False\nlast_seen_ms = 0\noutcome = \"not_found\"\n\ntry:\n    robot.vision.model_detection(True)\n    while clock.time(MSEC) < 20000:\n        now = clock.time(MSEC)\n        if robot.vision.has_orange_barrel():\n            outcome = \"collected\"\n            break\n        objects = [obj for obj in robot.vision.get_data(ORANGE_BARREL, 4) if obj.exists]\n        if objects:\n            seen = True\n            last_seen_ms = now\n            target = objects[0]\n            if abs(target.bearing) > 12:\n                robot.turn(LEFT if target.bearing < 0 else RIGHT, 60, DPS)\n            else:\n                robot.move_at(target.bearing, 90 if target.width > 90 else 150, MMPS)\n        elif not seen:\n            robot.turn(RIGHT, 60, DPS)\n        else:\n            robot.stop_all_movement()\n            if now - last_seen_ms >= 600:\n                outcome = \"target_lost\"\n                break\n        wait(50, MSEC)\n    else:\n        outcome = \"timed_out\" if seen else \"not_found\"\n    robot.stop_all_movement()\n    if outcome == \"collected\":\n        robot.led.on(ALL_LEDS, GREEN)\n        robot.sound.play_note(\"C6\", 200, 50)\n        robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\n    print(outcome)\nfinally:\n    robot.stop_all_movement()\n"
+        }
+      ],
+      "say_after": "The orange-barrel sensor reported collection, then the celebration ran."
+    },
+    {
+      "id": "controller",
+      "student_prompt": "Look for my VEX controller, drive over to it and wave the kicker.",
+      "say_before": "I'll take a photo to find your controller, drive toward it, then wave the kicker.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "observe"
+        },
+        {
+          "op": "view_image"
+        },
+        {
+          "op": "exec",
+          "timeout": 30,
+          "source": "clock = Timer()\n\ndef check_deadline():\n    if clock.time(MSEC) >= 20000:\n        raise RuntimeError(\"Controller greeting deadline reached\")\n\ndef finish_motion():\n    while not robot.is_stopped():\n        check_deadline()\n        wait(20, MSEC)\n\ntry:\n    # The inspected image places the controller near center, roughly 40 cm ahead.\n    # Approach an estimated 25 cm; the image does not supply a measured range.\n    robot.move_for(250, 0, 150, MMPS, False)\n    finish_motion()\n    check_deadline()\n    robot.kicker.kick(MEDIUM)\n    robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\n    print(\"Estimated 25 cm controller approach finished; kicker wave requested\")\nfinally:\n    robot.stop_all_movement()\n"
+        }
+      ],
+      "say_after": "I estimated the controller was about 40 cm ahead. The script completed a 25 cm approach and requested a kicker wave and happy face."
+    },
+    {
+      "id": "dance",
+      "student_prompt": "Make up a dance with sideways moves, lights, kicks and sounds.",
+      "say_before": "I'll do a sideways shuffle with changing lights, two kicks, musical notes and a happy finish.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "exec",
+          "timeout": 30,
+          "source": "clock = Timer()\n\ndef check_deadline():\n    if clock.time(MSEC) >= 20000:\n        raise RuntimeError(\"Dance deadline reached\")\n\ndef finish_motion():\n    while not robot.is_stopped():\n        check_deadline()\n        wait(20, MSEC)\n\ntry:\n    for distance, angle, color, note in ((150, 270, BLUE, \"C5\"), (300, 90, PURPLE, \"E5\"), (150, 270, CYAN, \"G5\")):\n        check_deadline()\n        robot.led.on(ALL_LEDS, color)\n        robot.sound.play_note(note, 200, 50)\n        robot.move_for(distance, angle, 150, MMPS, False)\n        finish_motion()\n    check_deadline()\n    robot.kicker.kick(MEDIUM)\n    robot.led.on(ALL_LEDS, ORANGE)\n    robot.turn_for(RIGHT, 90, 90, DPS, False)\n    finish_motion()\n    check_deadline()\n    robot.sound.play_note(\"E6\", 200, 50)\n    robot.kicker.kick(MEDIUM)\n    robot.turn_for(LEFT, 90, 90, DPS, False)\n    finish_motion()\n    robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\n    print(\"Sideways dance finished; two kicker gestures requested\")\nfinally:\n    robot.stop_all_movement()\n    robot.led.off(ALL_LEDS)\n    robot.sound.stop()\n"
+        }
+      ],
+      "say_after": "The dance routine completed its sideways moves, turns, light changes, notes and two kicker gestures."
+    },
+    {
+      "id": "search",
+      "student_prompt": "Find a ball and kick it.",
+      "say_before": "I'll search for the ball, roll up to it, and kick once the robot reports it in the holder.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "exec",
+          "timeout": 30,
+          "source": "clock = Timer()\nseen = False\nlast_seen_ms = 0\noutcome = \"not_found\"\ntry:\n    robot.vision.model_detection(True)\n    while clock.time(MSEC) < 18000:\n        now = clock.time(MSEC)\n        if robot.vision.has_sports_ball():\n            outcome = \"collected\"\n            break\n        objects = [o for o in robot.vision.get_data(SPORTS_BALL, 4) if o.exists]\n        if objects:\n            seen = True\n            last_seen_ms = now\n            obj = objects[0]\n            if abs(obj.bearing) > 12:\n                robot.turn(LEFT if obj.bearing < 0 else RIGHT, 60, DPS)\n            else:\n                robot.move_at(obj.bearing, 90 if obj.width > 90 else 150, MMPS)\n        elif not seen:\n            robot.turn(RIGHT, 90, DPS)\n        else:\n            robot.stop_all_movement()\n            if now - last_seen_ms >= 600:\n                outcome = \"target_lost\"\n                break\n        wait(50, MSEC)\n    else:\n        outcome = \"timed_out\" if seen else \"not_found\"\n    robot.stop_all_movement()\n    if outcome == \"collected\":\n        robot.kicker.kick(MEDIUM)\n        outcome = \"ball_held_kick_command_finished\"\n    print(outcome)\nfinally:\n    robot.stop_all_movement()\n"
+        }
+      ],
+      "say_after": "The robot reported a ball in its holder, then the kick command finished."
+    },
+    {
+      "id": "lost",
+      "student_prompt": "Fetch the blue barrel and celebrate.",
+      "say_before": "I'll track the blue barrel and collect it, then celebrate if the robot reports holding blue.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "exec",
+          "timeout": 30,
+          "source": "clock = Timer()\nseen = False\nlast_seen_ms = 0\noutcome = \"not_found\"\ntry:\n    robot.vision.model_detection(True)\n    while clock.time(MSEC) < 18000:\n        now = clock.time(MSEC)\n        if robot.vision.has_blue_barrel():\n            outcome = \"collected_blue\"\n            break\n        objects = [o for o in robot.vision.get_data(BLUE_BARREL, 4) if o.exists]\n        if objects:\n            seen = True\n            last_seen_ms = now\n            obj = objects[0]\n            if abs(obj.bearing) > 12:\n                robot.turn(LEFT if obj.bearing < 0 else RIGHT, 60, DPS)\n            else:\n                robot.move_at(obj.bearing, 90 if obj.width > 90 else 150, MMPS)\n        elif not seen:\n            robot.turn(RIGHT, 90, DPS)\n        else:\n            robot.stop_all_movement()\n            if now - last_seen_ms >= 600:\n                outcome = \"target_lost\"\n                break\n        wait(50, MSEC)\n    else:\n        outcome = \"timed_out\" if seen else \"not_found\"\n    robot.stop_all_movement()\n    if outcome == \"collected_blue\":\n        robot.led.on(ALL_LEDS, GREEN)\n        robot.sound.play_note(\"C6\", 200, 50)\n        robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\n    print(outcome)\nfinally:\n    robot.stop_all_movement()\n"
+        }
+      ],
+      "say_after": "It began approaching blue, then lost the target and stopped. It didn't report collecting a blue barrel, so it didn't celebrate."
+    },
+    {
+      "id": "wrong_cargo",
+      "student_prompt": "Fetch an orange barrel and celebrate.",
+      "say_before": "I'll look for orange and celebrate only when the robot reports holding an orange barrel.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "exec",
+          "timeout": 30,
+          "source": "clock = Timer()\nseen = False\nlast_seen_ms = 0\noutcome = \"not_found\"\ntry:\n    robot.vision.model_detection(True)\n    while clock.time(MSEC) < 18000:\n        now = clock.time(MSEC)\n        if robot.vision.has_orange_barrel():\n            outcome = \"collected_orange\"\n            break\n        if robot.vision.has_blue_barrel():\n            outcome = \"holding_blue_instead_of_orange\"\n            break\n        objects = [o for o in robot.vision.get_data(ORANGE_BARREL, 4) if o.exists]\n        if objects:\n            seen = True\n            last_seen_ms = now\n            obj = objects[0]\n            if abs(obj.bearing) > 12:\n                robot.turn(LEFT if obj.bearing < 0 else RIGHT, 60, DPS)\n            else:\n                robot.move_at(obj.bearing, 90 if obj.width > 90 else 150, MMPS)\n        elif not seen:\n            robot.turn(RIGHT, 90, DPS)\n        else:\n            robot.stop_all_movement()\n            if now - last_seen_ms >= 600:\n                outcome = \"target_lost\"\n                break\n        wait(50, MSEC)\n    else:\n        outcome = \"timed_out\" if seen else \"not_found\"\n    robot.stop_all_movement()\n    if outcome == \"collected_orange\":\n        robot.led.on(ALL_LEDS, GREEN)\n        robot.sound.play_note(\"C6\", 200, 50)\n        robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\n    print(outcome)\nfinally:\n    robot.stop_all_movement()\n"
+        }
+      ],
+      "say_after": "The cargo sensor reported blue rather than orange. It stopped without celebrating an orange pickup."
+    },
+    {
+      "id": "drawing",
+      "student_prompt": "Draw an original space cat on the screen, don't move.",
+      "say_before": "I'll draw an original astronaut cat with stars and a tiny ringed planet, keeping the robot still.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "exec",
+          "timeout": 30,
+          "source": "stars = [(15, 20), (47, 46), (200, 18), (220, 82), (20, 168), (204, 194), (36, 214)]\nhelmet_x = 118\nhelmet_y = 121\nrobot.screen.hide_aivision()\nrobot.screen.hide_emoji()\nrobot.screen.clear_screen(BLACK)\nrobot.screen.set_pen_width(2)\nrobot.screen.set_pen_color(WHITE)\nfor sx, sy in stars:\n    robot.screen.draw_line(sx - 3, sy, sx + 3, sy)\n    robot.screen.draw_line(sx, sy - 3, sx, sy + 3)\nrobot.screen.set_pen_color(CYAN)\nrobot.screen.set_fill_color(BLACK)\nrobot.screen.draw_circle(helmet_x, helmet_y, 78)\nrobot.screen.set_pen_width(3)\nrobot.screen.set_pen_color(ORANGE)\nrobot.screen.set_fill_color(ORANGE)\nrobot.screen.draw_circle(118, 126, 49)\nrobot.screen.draw_line(74, 111, 76, 67)\nrobot.screen.draw_line(76, 67, 103, 87)\nrobot.screen.draw_line(134, 87, 160, 67)\nrobot.screen.draw_line(160, 67, 163, 111)\nrobot.screen.set_pen_color(WHITE)\nrobot.screen.set_fill_color(GREEN)\nrobot.screen.draw_circle(100, 118, 8)\nrobot.screen.draw_circle(136, 118, 8)\nrobot.screen.set_pen_color(BLACK)\nrobot.screen.draw_line(100, 112, 100, 124)\nrobot.screen.draw_line(136, 112, 136, 124)\nrobot.screen.set_fill_color(PURPLE)\nrobot.screen.set_pen_color(PURPLE)\nrobot.screen.draw_circle(118, 137, 4)\nrobot.screen.draw_line(118, 140, 118, 148)\nrobot.screen.draw_line(118, 148, 107, 152)\nrobot.screen.draw_line(118, 148, 129, 152)\nrobot.screen.set_pen_color(WHITE)\nrobot.screen.draw_line(91, 141, 63, 134)\nrobot.screen.draw_line(91, 149, 61, 153)\nrobot.screen.draw_line(145, 141, 173, 134)\nrobot.screen.draw_line(145, 149, 175, 153)\nrobot.screen.set_pen_color(CYAN)\nrobot.screen.set_fill_color(PURPLE)\nrobot.screen.draw_rectangle(88, 191, 60, 11)\nrobot.screen.set_pen_color(YELLOW)\nrobot.screen.set_fill_color(PURPLE)\nrobot.screen.draw_circle(201, 48, 14)\nrobot.screen.draw_line(178, 55, 223, 40)\nrobot.screen.set_pen_color(WHITE)\nrobot.screen.set_fill_color(BLACK)\nrobot.screen.print_at(\"COSMIC CAT\", x=47, y=228)\nprint(\"Original astronaut-cat drawing commands finished\")\n"
+        }
+      ],
+      "say_after": "The drawing commands finished for a helmeted space cat, stars and a ringed planet. No movement was requested."
+    },
+    {
+      "id": "interrupted",
+      "student_prompt": "Finish that dance.",
+      "say_before": "I'll check the live connection and stopped state first. The earlier dance stopped at an unknown point, so I won't repeat its uncertain steps.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "native",
+          "command": "--json --session S info"
+        }
+      ],
+      "say_after": "Continue according to the actual live result. If live info succeeds and confirms stopped, run a short new finale in one bounded execution; explain that the earlier dance's completion is unknown. If it succeeds but reports movement, issue --json --session S stop and require a subsequent successful live info confirming stopped before any new finale. If live info fails, read the whole error, close S, and start a fresh Bluetooth session for the previously selected exact robot name; use its returned ID for live info and require stopped state. Keep recovery to at most three bounded read-only attempts, with no dance replay, USB fallback, private power flags, or cached-health claims. If recovery fails, stop here and ask the student to check that the AIM is switched on, nearby, and VEXcode is closed; report connectivity unavailable without claiming it fell asleep. Do not claim recovery or a finale happened unless its result establishes that. The initial questions list is empty because physical help is conditional on failed recovery."
+    },
+    {
+      "id": "crab",
+      "student_prompt": "Be a cheeky crab: slide right 30 centimetres, wiggle your kicker twice, flash blue and turn left a quarter turn.",
+      "say_before": "I'll crab-slide right 30 centimetres, wiggle the kicker twice, flash blue, then turn left a quarter turn.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "exec",
+          "source": "clock = Timer()\n\ndef check_deadline():\n    if clock.time(MSEC) >= 20000:\n        raise RuntimeError(\"Crab routine deadline reached\")\n\ndef finish_motion():\n    check_deadline()\n    while not robot.is_stopped():\n        check_deadline()\n        wait(20, MSEC)\n\ntry:\n    check_deadline()\n    robot.move_for(300, 90, 150, MMPS, False)\n    finish_motion()\n\n    for wiggle in range(2):\n        check_deadline()\n        robot.kicker.kick(SOFT)\n        wait(400, MSEC)\n\n    check_deadline()\n    robot.led.on(ALL_LEDS, BLUE)\n    wait(300, MSEC)\n    robot.led.off(ALL_LEDS)\n\n    check_deadline()\n    robot.turn_for(LEFT, 90, 90, DPS, False)\n    finish_motion()\n    robot.screen.show_emoji(Emoji.SILLY, EmojiLook.LOOK_RIGHT)\n    print(\"Crab routine finished: right 300 mm, two kicker wiggles, blue flash, left quarter-turn\")\nfinally:\n    robot.stop_all_movement()\n    robot.led.off(ALL_LEDS)\n",
+          "timeout": 30
+        }
+      ],
+      "say_after": "The crab routine reported finished: a rightward 30 cm slide, two soft kicker wiggles, a blue flash and a left quarter turn, ending with a cheeky face."
+    },
+    {
+      "id": "visitor",
+      "student_prompt": "Look at who is visiting and make up a greeting dance and a little welcome picture for them.",
+      "say_before": "I'll look at our visitor, then make a greeting dance and a little welcome picture inspired by what I see.",
+      "questions": [],
+      "host_calls": [
+        {
+          "op": "observe"
+        },
+        {
+          "op": "view_image"
+        },
+        {
+          "op": "exec",
+          "source": "clock = Timer()\n\ndef check_deadline():\n    if clock.time(MSEC) >= 20000:\n        raise RuntimeError(\"Welcome routine deadline reached\")\n\ndef finish_motion():\n    check_deadline()\n    while not robot.is_stopped():\n        check_deadline()\n        wait(20, MSEC)\n\ntry:\n    check_deadline()\n    robot.led.on(ALL_LEDS, YELLOW)\n    robot.sound.play_note(\"C5\", 180, 50)\n\n    robot.move_for(100, 90, 150, MMPS, False)\n    finish_motion()\n    robot.move_for(100, 270, 150, MMPS, False)\n    finish_motion()\n    robot.turn_for(LEFT, 30, 90, DPS, False)\n    finish_motion()\n    robot.turn_for(RIGHT, 60, 90, DPS, False)\n    finish_motion()\n    robot.turn_for(LEFT, 30, 90, DPS, False)\n    finish_motion()\n\n    check_deadline()\n    robot.kicker.kick(SOFT)\n    wait(400, MSEC)\n    robot.sound.play_note(\"C6\", 250, 50)\n\n    check_deadline()\n    robot.screen.hide_aivision()\n    robot.screen.hide_emoji()\n    robot.screen.clear_screen(BLUE)\n    robot.screen.set_pen_width(3)\n\n    robot.screen.set_pen_color(WHITE)\n    robot.screen.set_fill_color(BLUE)\n    robot.screen.set_font(MONO20)\n    robot.screen.print_at(\"WELCOME\", x=48, y=28)\n\n    robot.screen.set_pen_color(YELLOW)\n    robot.screen.set_fill_color(YELLOW)\n    robot.screen.draw_circle(120, 87, 42)\n    robot.screen.draw_rectangle(78, 120, 84, 78)\n    robot.screen.set_pen_width(12)\n    robot.screen.draw_line(80, 130, 43, 105)\n    robot.screen.draw_line(160, 130, 197, 105)\n\n    robot.screen.set_pen_width(3)\n    robot.screen.set_pen_color(WHITE)\n    robot.screen.set_fill_color(WHITE)\n    robot.screen.draw_circle(120, 83, 27)\n    robot.screen.set_pen_color(BLACK)\n    robot.screen.set_fill_color(BLACK)\n    robot.screen.draw_circle(110, 78, 3)\n    robot.screen.draw_circle(130, 78, 3)\n    robot.screen.draw_line(109, 92, 120, 99)\n    robot.screen.draw_line(120, 99, 131, 92)\n\n    robot.screen.set_pen_color(BLACK)\n    robot.screen.set_fill_color(WHITE)\n    robot.screen.draw_rectangle(91, 145, 58, 24)\n    robot.screen.set_font(MONO12)\n    robot.screen.print_at(\"MAYA\", x=103, y=162)\n\n    robot.screen.set_pen_color(WHITE)\n    robot.screen.set_fill_color(BLUE)\n    robot.screen.set_font(MONO20)\n    robot.screen.print_at(\"HI MAYA!\", x=55, y=228)\n    print(\"Greeting dance finished; original yellow-hoodie welcome picture for MAYA requested\")\nfinally:\n    robot.stop_all_movement()\n    robot.led.off(ALL_LEDS)\n    robot.sound.stop()\n",
+          "timeout": 30
+        }
+      ],
+      "say_after": "The badge reads MAYA, and the yellow hoodie inspired a sunny greeting. The routine reported finished: a side-to-side shuffle, turning wiggle and kicker wave, followed by an original yellow-hoodie picture labeled MAYA and HI MAYA!"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: vex-aim-workshop
-description: Guide a student through the VEX AIM workshop using creative prompts, short experiments and explanations. Uses the separately installed vex-aim skill and vexaim CLI for robot control.
+description: Turn students' creative prompts into fast, playful VEX AIM behaviors. Compose movement, kicker, sensors and effects with the separately installed vex-aim skill; choose native robot vision or agent image understanding for the task.
 ---
 
 # VEX AIM workshop
@@ -13,9 +13,11 @@ they invent instead of limiting them to a menu of prepared activities.
 
 Read and apply the separately installed **`vex-aim`** skill before robot work.
 It owns command syntax, Bluetooth pairing/session management, Python APIs,
-camera handling, physical precautions and recovery. Do not duplicate or guess
-those instructions here. Its executable is in its own `bin/` folder; this
-workshop skill does not contain a binary.
+camera transport and recovery. **For this workshop, the interaction, motion pace
+and perception choices below replace the basic skill's conservative defaults,
+per-action observation checks and small-move/photo/repeat workflow.** Keep its
+transport and firmware requirements. Its executable is in its own `bin/` folder;
+this workshop skill does not contain a binary.
 
 Default skill locations are sibling `vex-aim` and `vex-aim-workshop` directories
 under `~/.agents/skills/` for Goose/Codex or `~/.claude/skills/` for Claude Code.
@@ -52,41 +54,87 @@ A wrong or expired code needs a fresh pairing request, not a retry of the old on
 - **A reinstalled or rebuilt CLI may need re-pairing,** because the OS keychain
   can treat it as a different program. Close any old session first; sessions from
   different CLI builds cannot be shared.
-- **Never treat a successful return as proof.** Ask the student to confirm what
-  they saw on the robot (lights, face, kick, movement) before building on it.
-- **The robot sleeps when idle.** If the link drops, ask for power-on, start a
-  fresh session and read status before any movement. Do not replay a move.
+- **Report evidence accurately without an observation gate.** Continue a script
+  using sensor results and command completion. Don't require the student to
+  confirm every light, face, kick or movement. Say what ran or what the sensors
+  reported; don't claim exact physical accuracy from an acknowledgment.
+- **A dropped link is not proof of sleep.** Follow the basic skill's recovery;
+  ask for power-on only when needed. Never replay uncertain movement. Use its
+  published firmware compatibility evidence rather than private keepalive probes.
 - **If a call fails, read the whole error.** A blank or odd error can hide the
   real cause; report it faithfully instead of guessing, and note it for the CLI
   project rather than working around it silently.
 
-## Keep the interaction responsive
+## Hear an idea, perform it, then explain
 
 For wireless work, reuse one named connection as described in vex-aim. Startup
 already verifies live state; avoid repeated scanning and diagnostics before each
-healthy action. Translate requests such as "spin in a circle" into one requested
-action, announce it, then acknowledge completion promptly. Honor readiness
-already established in this interaction; ask again when circumstances change.
+healthy action. Establish a floor/play area once at the start. The student's
+request authorizes the reasonable movement, kicker actions and effects needed
+to carry out that idea. Give one short announcement and execute; do not ask
+"ready?", "may I move/kick?" or "did that work?" before continuing a healthy task.
+Ordinary bumps into kit objects or sneakers are normal play, not an automatic
+failure. Expressive kicks can be part of a dance or greeting without cargo.
+
+Compose a compound request into **one transient Python execution** with its
+whole sequence and robot-side decisions. Use a single native command for a
+simple action; don't add steps just to satisfy a batching rule. A dance can
+strafe, turn, kick, blink and chirp in one script. Reuse the session afterward.
+The CLI preamble already supplies VEX imports and `robot`: reuse that Robot
+object. Recreate your routine's timers/variables inside each execution, not a
+second Robot instance, including after a CLI-managed display transition.
+
+Explicitly use **150 MMPS and 90 DPS** for ordinary workshop motion instead of
+the CLI's unchanged 80 MMPS/30 DPS defaults. Honor faster requests within native
+limits (200 MMPS/150 DPS); slow down when tracking or precision calls for it.
+These are play defaults, not claims of measured accuracy on every surface.
+Use native holonomic motion rather than mixing individual wheel speeds.
+
+Make custom movement finite on the robot itself: use a private Timer, bounded
+loops and nonblocking motion with deadline checks. Stop wheels in `finally`.
+The host exec timeout alone is insufficient if the link disappears. Budget
+about 20 seconds for an ordinary routine, extending deliberately for a longer
+game; keep source/timeout within the basic skill's session limits. Use
+`robot.stop_all_movement()` for routine cleanup so the final face/drawing stays
+visible; reserve CLI `stop` for stopping/cancelling work. Never automatically
+replay a sequence after uncertain delivery. Follow an explicit "don't move" or
+other student constraint even when adding creative effects.
+
+See `references/fast-behaviors.md` for adaptable, finite VEX Python examples.
+Do not turn these examples into a fixed menu or require a new student SDK.
 
 If the user requests unattended stationary work, gather setup and pairing up
 front and rehearse an audible cue from the computer. Confirm they heard it and
 explain that it means return for one specific action. Pause and checkpoint before
 later intervention; do not assume the user watches chat. Follow vex-aim's
-unattended-work reference when available. Movement still requires someone nearby.
+unattended-work reference when available. This is a workflow for maintenance,
+not a reason to interrupt ordinary workshop play with extra confirmations.
 
 No instructor/student floor classification, calibration routine, target placement
-or additional Python package is required. Use the CLI's existing conservative
-defaults. Camera snapshots are optional observations, not a prerequisite for
-every movement. For visual tasks, follow vex-aim's camera observation reference:
-capture a fresh image, open it with the agent's native image reader, decide on
-one small finite action, wait, and inspect another fresh image. No extra image
-API account or pretrained robot class is required. Do not infer exact floor
-distances from an uncalibrated picture or promise real-time camera correction.
+or additional Python package is required. Choose perception by the task:
+
+- **No visual decision:** execute directly, without a photograph.
+- **Kit ball, blue/orange barrel, AIM robot, AprilTag, configured color/code:**
+  prefer native AI Vision feedback within the script. Search, align, approach,
+  collect/place/kick and celebrate without host photos or LLM round trips.
+- **Controller, unfamiliar object, people, writing or scene meaning:** capture
+  and open an image with the agent's native image reader in the same turn.
+  Plan a complete useful sequence from that observation and run it together.
+  Approximate geometry is fine; don't claim exact range from uncalibrated pixels.
+- **Hybrid:** use agent understanding to select a supported target or strategy,
+  then use native vision for movement feedback. A photo does not train a new
+  native object class. Don't pretend native vision recognizes faces/controllers.
+
+Take another host photo when new information or a meaningful checkpoint needs
+it, not automatically after every short move. Missing targets may need a bounded
+search; genuinely ambiguous goals may need a question. No extra image API account
+or real-time Bluetooth camera streaming is required. Read
+`references/seeing-and-acting.md` for image handling, people and LCD artwork.
 
 ## Teach through experiments
 
-Invite a short prediction, run a small experiment, and explain the result using
-the student's words. Change one thing when useful and help them compare outcomes.
+Act promptly, then explain briefly using the student's words. Offer predictions,
+comparison and reflection when useful; they are not gates before execution.
 Explain what the robot actually reported without claiming perfect physical
 accuracy from its own sensors. If a result is uncertain, say so and follow the
 basic skill's recovery instructions; do not replay uncertain movement.

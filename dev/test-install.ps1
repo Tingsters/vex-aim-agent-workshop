@@ -33,6 +33,10 @@ try {
     $base=Join-Path $target "$agent/skills"
     Check ((Test-Path "$base/vex-aim/SKILL.md") -and (Test-Path "$base/vex-aim/bin/vexaim.exe")) "$agent has released CLI/basic skill"
     Check ((Test-Path "$base/vex-aim-workshop/SKILL.md") -and -not (Test-Path "$base/vex-aim-workshop/bin")) "$agent has a separate teaching skill"
+    foreach ($reference in (Get-ChildItem -LiteralPath (Join-Path $repo 'skill/vex-aim-workshop/references') -File)) {
+      $installedReference=Join-Path "$base/vex-aim-workshop/references" $reference.Name
+      Check ((Test-Path $installedReference) -and ((Get-FileHash -Algorithm SHA256 $installedReference).Hash -eq (Get-FileHash -Algorithm SHA256 $reference.FullName).Hash)) "$agent installs matching $($reference.Name)"
+    }
     $version=& "$base/vex-aim/bin/vexaim.exe" --version
     Check ("$version" -eq "vexaim $((Get-Content -Raw (Join-Path $assets 'VERSION')).Trim())") "$agent executable matches release"
   }
