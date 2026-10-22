@@ -38,7 +38,8 @@ Verify visible screen effects before building an activity around them. The
 activating and maintaining the program display. Use the matching CLI/basic skill
 and a reusable session; students can ask for a face, message or drawing directly.
 Use named emojis and contrasting text/background colors. Stop/close or one minute
-without activity returns the display to its menu. Native camera photographs
+without activity ends the drawing. The rc.7 power candidate may then show REPL
+Mode until session close. Native camera photographs
 remain independent. On older binaries or unsupported firmware, explain the
 actual limitation and use lights/sounds as feedback instead.
 

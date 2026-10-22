@@ -34,7 +34,8 @@ With a matching 0.3.0-rc.5 or newer CLI/basic skill, students can also ask for a
 happy face, message or drawing over Bluetooth. The tool activates and maintains
 the program display automatically; no saved project, menu sequence or USB cable
 is required. Reuse the connection. Stop/close or one minute without activity
-returns the LCD to its menu. Camera photographs remain independent of LCD mode.
+ends the drawing. The rc.7 power candidate may then show REPL Mode until the
+session closes. Camera photographs remain independent of LCD mode.
 
 For the prerelease, install this workshop first, then select the matching CLI
 and basic skill explicitly. Windows PowerShell:
