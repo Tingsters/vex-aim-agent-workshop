@@ -23,6 +23,43 @@ If vex-aim is missing, run this workshop's installer to install both skills and
 the released CLI. Do not build a local Rust project as a student prerequisite.
 After installation, start a new agent session for discovery.
 
+## Pair over Bluetooth without a terminal
+
+Students should never open a terminal. Pair on their behalf. The four-digit code
+is short-lived and only useful within Bluetooth range; accepting that it appears
+in this conversation is a deliberate workshop trade-off. Never put the code in a
+command argument or write it to a file.
+
+1. Confirm the exact robot name with `vexaim bluetooth scan`, VEXcode closed and
+   the robot switched on. Check `vexaim bluetooth pair --help` for `--code-stdin`.
+   If it is missing, the installed CLI is too old: tell the student, and either
+   update it or fall back to the masked terminal prompt in the vex-aim skill.
+2. Ask the student to watch the robot's screen, then start pairing with the code
+   read from a named pipe, because the code only appears after the request starts:
+   `mkfifo PIPE`, then in the background
+   `"<Tool path>" --name NAME bluetooth pair --code-stdin <> PIPE`. Put PIPE in
+   a private temporary folder and delete it afterward.
+3. Ask for the code in chat, write it to the pipe, and wait for
+   `Paired NAME; credential saved`. It has about two minutes before timing out.
+4. Start the session and read live status (no movement) before anything else.
+
+A wrong or expired code needs a fresh pairing request, not a retry of the old one.
+
+## Known pitfalls
+
+- **USB may not move wheels or the kicker.** Calls succeed but nothing moves. Do
+  not repeat them; switch to Bluetooth. Lights, sound, sensors and photos work.
+- **A reinstalled or rebuilt CLI may need re-pairing,** because the OS keychain
+  can treat it as a different program. Close any old session first; sessions from
+  different CLI builds cannot be shared.
+- **Never treat a successful return as proof.** Ask the student to confirm what
+  they saw on the robot (lights, face, kick, movement) before building on it.
+- **The robot sleeps when idle.** If the link drops, ask for power-on, start a
+  fresh session and read status before any movement. Do not replay a move.
+- **If a call fails, read the whole error.** A blank or odd error can hide the
+  real cause; report it faithfully instead of guessing, and note it for the CLI
+  project rather than working around it silently.
+
 ## Keep the interaction responsive
 
 For wireless work, reuse one named connection as described in vex-aim. Startup

@@ -54,8 +54,10 @@ after installation so both skills can be discovered. Then try:
 > Do not move it.
 
 For Bluetooth, tell the agent the exact robot name and keep VEXcode closed.
-Pairing codes go into a masked local terminal, never into chat. The agent reuses
-the connection across requests. If the robot sleeps, it needs switching on again.
+For pairing, the agent asks you for the four-digit code on the robot's screen
+and pairs for you, so you do not open a terminal. The code is short-lived and
+only works within Bluetooth range, but it will appear in the agent's transcript.
+The agent reuses the connection across requests. If the robot sleeps, it needs switching on again.
 
 For experimental 0.3.0-rc.6 testing, including Mac verification, follow the
 [pinned prerelease instructions](docs/bluetooth.md). The unversioned commands
