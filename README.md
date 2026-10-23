@@ -3,7 +3,8 @@
 Build robot ideas through ordinary prompts with Goose, Codex or Claude Code.
 Ask it to move, react, play sounds, change lights, or take a photograph.
 
-CLI 0.3 includes agent-assisted Bluetooth pairing with `--code-stdin`, native
+CLI 0.4 adds persistent Bluetooth sessions, automatic same-robot recovery and
+quick program replacement. It includes pairing with `--code-stdin`, native
 strafing, vector motion, device commands and camera observations. With its
 matching skill, an agent can compose a whole behavior in one robot script. Native
 AI Vision handles kit-target feedback on the robot; the agent opens a photograph
@@ -11,8 +12,7 @@ when a task needs scene understanding, then plans a complete useful sequence.
 See the [visual activity guide](skill/vex-aim-workshop/references/seeing-and-acting.md).
 Students continue using ordinary prompts; no additional vision API account is
 needed. Rerun the installer below to update the CLI and both skills; older
-stable 0.2.1 binaries do not support `--code-stdin`. Prerelease testing still
-requires selecting a candidate explicitly.
+versions before 0.4 do not provide the persistent workshop/retry policy.
 
 This repository contains the **workshop teaching skill and activities**. The
 standalone [vexaim CLI](https://github.com/Tingsters/vexaim-cli) provides robot
@@ -60,11 +60,15 @@ For Bluetooth, tell the agent the exact robot name and keep VEXcode closed.
 For pairing, the agent asks you for the four-digit code on the robot's screen
 and pairs for you, so you do not open a terminal. The code is short-lived and
 only works within Bluetooth range, but it will appear in the agent's transcript.
-The agent reuses the connection across requests. If the robot sleeps, it needs switching on again.
+The agent keeps a background connection across requests, new chats and workshop
+breaks, and automatically recovers ordinary link failures without replaying motion.
+A student can say "try again" or request a new activity to replace the old program.
+For another computer, ask the current agent to hand over the robot first; pairing
+is remembered. A powered-off robot still needs its power switch.
 
-For experimental 0.3.0-rc.6 testing, including Mac verification, follow the
-[pinned prerelease instructions](docs/bluetooth.md). The unversioned commands
-above install the stable CLI. Sleep prevention remains unresolved in rc.6.
+See [connection and retry guidance](skill/vex-aim-workshop/references/connection-and-retries.md)
+and [magnetic cargo delivery](skill/vex-aim-workshop/references/cargo-and-tags.md).
+Two-computer Bluetooth handoff requires separate hardware verification.
 
 ## Explore
 

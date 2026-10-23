@@ -1,0 +1,69 @@
+{
+  "provenance": "Independent bounded agent evaluations of the updated workshop skill; synthetic scenarios, no physical robot or user credentials. Calls normalized to operation names; executable paths omitted.",
+  "cases": [
+    {
+      "id": "pickup",
+      "student_request": "Find the blue canister and drop it next to the 0 tag, then celebrate.",
+      "questions": [],
+      "host_ops": [
+        "exec"
+      ],
+      "timeout": 60,
+      "outer_timeout": 120,
+      "source": "import json\n\nclock = Timer()\nphase = \"starting\"\nreason = \"not_found\"\nsearch_degrees = {}\n\n\ndef progress(value):\n    global phase\n    phase = value\n    print('__VEXAIM_EVENT__' + json.dumps({\"event\": \"progress\", \"phase\": value}))\n\n\ndef check_deadline():\n    if clock.time(MSEC) >= 30000:\n        raise RuntimeError(\"Routine deadline reached during \" + phase)\n\n\ndef finish_motion(limit_ms=3000, collected=None):\n    began = clock.time(MSEC)\n    while not robot.is_stopped():\n        check_deadline()\n        if collected is not None and collected():\n            robot.stop_all_movement()\n            return\n        if clock.time(MSEC) - began >= limit_ms:\n            raise RuntimeError(\"Movement deadline reached during \" + phase)\n        wait(25, MSEC)\n    check_deadline()\n\n\ndef approach(target, width, collected=None):\n    global reason\n    began = clock.time(MSEC)\n    last_seen = None\n    previous = robot.inertial.get_rotation()\n    key = str(target)\n    search_degrees.setdefault(key, 0)\n    while clock.time(MSEC) - began < 10000:\n        check_deadline()\n        rotation = robot.inertial.get_rotation()\n        search_degrees[key] += abs(rotation - previous)\n        previous = rotation\n        if search_degrees[key] >= 360:\n            robot.stop_all_movement()\n            reason = \"not_found\"\n            return False\n        if collected is not None and collected():\n            robot.stop_all_movement()\n            return True\n        objects = [o for o in robot.vision.get_data(target, 4) if o.exists]\n        if objects:\n            last_seen = clock.time(MSEC)\n            obj = max(objects, key=lambda o: o.width)\n            if abs(obj.bearing) > 10:\n                robot.turn(LEFT if obj.bearing < 0 else RIGHT, 60, DPS)\n            elif obj.width >= width:\n                robot.stop_all_movement()\n                return True\n            else:\n                robot.move_at(obj.bearing, 150, MMPS)\n        elif last_seen is None:\n            robot.turn(RIGHT, 60, DPS)\n        else:\n            robot.stop_all_movement()\n            if clock.time(MSEC) - last_seen >= 600:\n                reason = \"target_lost\"\n                return False\n        wait(50, MSEC)\n    robot.stop_all_movement()\n    reason = \"timed_out\"\n    return False\n\n\ntry:\n    robot.vision.model_detection(True)\n    robot.vision.tag_detection(True)\n    progress(\"collecting_blue\")\n    for attempt in range(2):\n        check_deadline()\n        if robot.has_blue_barrel():\n            break\n        if not approach(BLUE_BARREL, 90, robot.has_blue_barrel):\n            raise RuntimeError(\"blue_\" + reason)\n        if not robot.has_blue_barrel():\n            progress(\"contact\")\n            robot.move_for(200, 0, 200, MMPS, False)\n            finish_motion(2000, robot.has_blue_barrel)\n            wait(100, MSEC)\n            check_deadline()\n        if robot.has_blue_barrel():\n            break\n        if attempt == 0:\n            progress(\"realigning\")\n            robot.move_for(50, 180, 150, MMPS, False)\n            finish_motion()\n    if not robot.has_blue_barrel():\n        raise RuntimeError(\"not_collected\")\n    progress(\"finding_tag_0\")\n    if not approach(TAG0, 60):\n        raise RuntimeError(\"tag_0_\" + reason)\n    if not robot.has_blue_barrel():\n        raise RuntimeError(\"cargo_lost_before_placement\")\n    check_deadline()\n    progress(\"placing\")\n    robot.kicker.place()\n    wait(300, MSEC)\n    check_deadline()\n    robot.move_for(100, 180, 150, MMPS, False)\n    finish_motion()\n    if robot.has_blue_barrel():\n        raise RuntimeError(\"cargo_not_released\")\n    check_deadline()\n    progress(\"complete\")\n    robot.led.on(ALL_LEDS, GREEN)\n    robot.sound.play_note(\"C6\", 200, 50)\n    robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\n    print(json.dumps({\"ok\": True, \"phase\": phase, \"collected_blue\": True,\n                      \"released_near_tag\": 0, \"elapsed_ms\": clock.time(MSEC)}))\nfinally:\n    robot.stop_all_movement()\n"
+    },
+    {
+      "id": "A",
+      "student_request": "Try again, this time go faster and really collect the blue barrel before dropping it at tag 0.",
+      "questions": [],
+      "host_ops": [
+        "stop",
+        "info",
+        "exec"
+      ],
+      "timeout": 60,
+      "outer_timeout": 120,
+      "source": "import json\n\nroutine_clock = Timer()\nphase = \"starting\"\nsearch_degrees = {}\nactivity_result = {\n    \"ok\": False,\n    \"collected_blue_reported\": False,\n    \"tag_0_approach_completed\": False,\n    \"release_reported\": False\n}\n\ndef progress(value):\n    global phase\n    phase = value\n    print(\"__VEXAIM_EVENT__\" + json.dumps({\"event\": \"progress\", \"phase\": value}))\n\ndef check_deadline():\n    if routine_clock.time(MSEC) >= 30000:\n        raise RuntimeError(\"Routine deadline reached during \" + phase)\n\ndef bounded_wait(duration_ms):\n    began = routine_clock.time(MSEC)\n    while routine_clock.time(MSEC) - began < duration_ms:\n        check_deadline()\n        wait(25, MSEC)\n\ndef finish_motion(limit_ms=3000, collected=None):\n    began = routine_clock.time(MSEC)\n    while not robot.is_stopped():\n        check_deadline()\n        if collected is not None and collected():\n            robot.stop_all_movement()\n            return True\n        if routine_clock.time(MSEC) - began >= limit_ms:\n            raise RuntimeError(\"Movement deadline reached during \" + phase)\n        wait(25, MSEC)\n    check_deadline()\n    return True\n\ndef approach(target, width, collected=None, move_speed=200):\n    began = routine_clock.time(MSEC)\n    last_seen = None\n    previous = robot.inertial.get_rotation()\n    key = str(target)\n    search_degrees.setdefault(key, 0)\n    while routine_clock.time(MSEC) - began < 10000:\n        check_deadline()\n        rotation = robot.inertial.get_rotation()\n        search_degrees[key] += abs(rotation - previous)\n        previous = rotation\n        if search_degrees[key] >= 360:\n            robot.stop_all_movement()\n            raise RuntimeError(\"Search angular limit reached during \" + phase)\n        if collected is not None and collected():\n            robot.stop_all_movement()\n            return True\n        objects = [o for o in robot.vision.get_data(target, 4) if o.exists]\n        if objects:\n            last_seen = routine_clock.time(MSEC)\n            obj = max(objects, key=lambda o: o.width)\n            if abs(obj.bearing) > 10:\n                robot.turn(LEFT if obj.bearing < 0 else RIGHT, 90, DPS)\n            elif obj.width >= width:\n                robot.stop_all_movement()\n                return True\n            else:\n                robot.move_at(obj.bearing, move_speed, MMPS)\n        elif last_seen is None:\n            robot.turn(RIGHT, 120, DPS)\n        else:\n            robot.stop_all_movement()\n            if routine_clock.time(MSEC) - last_seen >= 600:\n                raise RuntimeError(\"Target lost during \" + phase)\n        wait(50, MSEC)\n    robot.stop_all_movement()\n    raise RuntimeError(\"Target search timed out during \" + phase)\n\ntry:\n    robot.vision.model_detection(True)\n    robot.vision.tag_detection(True)\n    progress(\"collecting_blue\")\n    for attempt in range(2):\n        check_deadline()\n        if robot.has_blue_barrel():\n            break\n        if not approach(BLUE_BARREL, 90, robot.has_blue_barrel, 200):\n            raise RuntimeError(\"Blue barrel approach failed\")\n        if not robot.has_blue_barrel():\n            progress(\"contact\")\n            robot.move_for(200, 0, 200, MMPS, False)\n            if not finish_motion(2000, robot.has_blue_barrel):\n                raise RuntimeError(\"Contact movement failed\")\n            bounded_wait(100)\n        if robot.has_blue_barrel():\n            break\n        if attempt == 0:\n            progress(\"realigning\")\n            robot.move_for(50, 180, 150, MMPS, False)\n            if not finish_motion():\n                raise RuntimeError(\"Realignment movement failed\")\n            progress(\"collecting_blue_retry\")\n    if not robot.has_blue_barrel():\n        raise RuntimeError(\"Blue barrel possession was not reported\")\n    activity_result[\"collected_blue_reported\"] = True\n    progress(\"finding_tag_0\")\n    if not approach(TAG0, 60, move_speed=150):\n        raise RuntimeError(\"Tag 0 approach failed\")\n    activity_result[\"tag_0_approach_completed\"] = True\n    if not robot.has_blue_barrel():\n        raise RuntimeError(\"Cargo lost before placement\")\n    progress(\"placing\")\n    check_deadline()\n    robot.kicker.place()\n    bounded_wait(300)\n    robot.move_for(100, 180, 150, MMPS, False)\n    if not finish_motion():\n        raise RuntimeError(\"Placement backoff failed\")\n    if robot.has_blue_barrel():\n        raise RuntimeError(\"Blue barrel release was not reported\")\n    activity_result[\"release_reported\"] = True\n    progress(\"complete\")\n    robot.led.on(ALL_LEDS, GREEN)\n    robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\n    activity_result[\"ok\"] = True\nexcept Exception as error:\n    activity_result[\"error\"] = str(error)\n    raise\nfinally:\n    robot.stop_all_movement()\n    activity_result[\"phase\"] = phase\n    activity_result[\"elapsed_ms\"] = routine_clock.time(MSEC)\n    print(json.dumps(activity_result))\n"
+    },
+    {
+      "id": "B",
+      "student_request": "Show me what the camera sees.",
+      "questions": [],
+      "host_ops": [
+        "wait",
+        "session status",
+        "info",
+        "camera observe",
+        "view_image"
+      ],
+      "timeout": 60,
+      "outer_timeout": 120,
+      "source": null
+    },
+    {
+      "id": "C",
+      "student_request": "Hand over this robot to the next student's laptop.",
+      "questions": [],
+      "host_ops": [
+        "session close"
+      ],
+      "timeout": 60,
+      "outer_timeout": 120,
+      "source": null
+    },
+    {
+      "id": "D",
+      "student_request": "We finished that activity; let's think up another game.",
+      "questions": [
+        {
+          "purpose": "Creative direction only; not a safety or readiness gate.",
+          "text": "What should AIM pretend to be in our next game?"
+        }
+      ],
+      "host_ops": [],
+      "timeout": 60,
+      "outer_timeout": 120,
+      "source": null
+    }
+  ]
+}

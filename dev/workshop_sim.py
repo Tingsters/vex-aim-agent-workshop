@@ -15,14 +15,16 @@ import sys
 from types import SimpleNamespace
 
 
-TARGETS = ('SPORTS_BALL', 'BLUE_BARREL', 'ORANGE_BARREL', 'AIM_ROBOT')
+TARGETS = ('SPORTS_BALL', 'BLUE_BARREL', 'ORANGE_BARREL', 'AIM_ROBOT', 'TAG0')
 FIXTURES = {
     'spin': {},
     'dance': {},
     'controller': {},
     'fetch': {'target': 'ORANGE_BARREL', 'bearings': [18, 6, 2, 0],
-              'widths': [30, 45, 100, 110], 'collect_after': 4},
-    'search': {'target': 'SPORTS_BALL', 'empty_ms': 500, 'collect_after': 14},
+              'widths': [30, 45, 100, 110], 'contact_mm': 120},
+    'search': {'target': 'SPORTS_BALL', 'empty_ms': 500, 'contact_mm': 80},
+    'delivery': {'target': 'BLUE_BARREL', 'bearings': [18, 6, 2, 0],
+                 'widths': [30, 45, 100, 110], 'contact_mm': 120, 'tag': True},
     'lost': {'target': 'BLUE_BARREL', 'lose_after': 1},
     'wrong_cargo': {'target': 'ORANGE_BARREL', 'held': 'BLUE_BARREL'},
     'drawing': {},
@@ -43,9 +45,14 @@ class Aim:
         self.stalled = stalled
         self.fail_motion = fail_motion
         self.held = self.fixture.get('held')
-        self.inertial = SimpleNamespace(get_heading=lambda: 0, get_rotation=lambda: 0)
+        self.forward_mm = 0
+        self.released_at_mm = 0
+        self.rotation = 0
+        self.motion = None
+        self.inertial = SimpleNamespace(get_heading=lambda: self.rotation % 360, get_rotation=lambda: self.rotation)
         self.vision = SimpleNamespace(get_data=self.get_data,
             model_detection=lambda enabled: self.record('model_detection', enabled),
+            tag_detection=lambda enabled: self.record('tag_detection', enabled),
             has_sports_ball=lambda: self.cargo('SPORTS_BALL'),
             has_blue_barrel=lambda: self.cargo('BLUE_BARREL'),
             has_orange_barrel=lambda: self.cargo('ORANGE_BARREL'),
@@ -87,14 +94,16 @@ class Aim:
             raise ValueError('Unknown kicker strength')
         self.record('kicker.kick', strength)
         self.held = None
+        self.released_at_mm = self.forward_mm
 
     def place(self):
         self.record('kicker.place')
         self.held = None
+        self.released_at_mm = self.forward_mm
 
     def cargo(self, target):
         self.record('vision.cargo', target)
-        if self.fixture.get('collect_after') and self.reads >= self.fixture['collect_after']:
+        if self.held is None and self.fixture.get('contact_mm') and self.forward_mm - self.released_at_mm >= self.fixture['contact_mm']:
             self.held = self.fixture.get('target')
         return self.held == target
 
@@ -105,6 +114,8 @@ class Aim:
             raise ValueError('Native count out of range')
         self.reads += 1
         self.record('vision.get_data', target, count)
+        if target == 'TAG0' and self.fixture.get('tag') and self.held:
+            return (SimpleNamespace(exists=True, bearing=0, width=70, height=70, id=0),)
         if target != self.fixture.get('target') or self.now < self.fixture.get('empty_ms', 0):
             return ()
         if self.reads > self.fixture.get('lose_after', math.inf):
@@ -117,7 +128,13 @@ class Aim:
             height=width, centerX=160 + bearing * 3, centerY=120, id=TARGETS.index(target)),)
 
     def wait(self, amount, units='MSEC'):
-        self.now += amount * (1000 if units == 'SECONDS' else 1)
+        duration = amount * (1000 if units == 'SECONDS' else 1)
+        active_ms = min(duration, max(0, self.active_until - self.now))
+        if self.motion and not self.stalled:
+            forward, rotation = self.motion
+            self.forward_mm += max(0, forward) * active_ms / 1000
+            self.rotation += rotation * active_ms / 1000
+        self.now += duration
         if self.now > 125000:
             raise RuntimeError('Simulator virtual-time budget exceeded')
 
@@ -125,6 +142,18 @@ class Aim:
         self.record(op, *args)
         self.active_kind = 'turn' if op.startswith('turn') else 'move'
         self.active_until = math.inf if self.stalled else self.now + duration
+        self.motion = (0, 0)
+        if op in ('move_for', 'move_at'):
+            angle = args[1] if op == 'move_for' else args[0]
+            velocity = args[2] if op == 'move_for' else args[1]
+            units = args[3] if op == 'move_for' else args[2]
+            speed = 100 if velocity is None else velocity * (2 if units == 'PERCENT' else 1)
+            self.motion = (speed * math.cos(math.radians(angle)), 0)
+        elif op in ('turn', 'turn_for'):
+            velocity = args[2] if op == 'turn_for' else args[1]
+            units = args[3] if op == 'turn_for' else args[2]
+            speed = 75 if velocity is None else velocity * (1.5 if units == 'PERCENT' else 1)
+            self.motion = (0, speed * (-1 if args[0] == 'LEFT' else 1))
         if self.fail_motion:
             raise RuntimeError('Injected motion failure')
         if wait:
@@ -167,6 +196,7 @@ class Aim:
         self.record('stop_all_movement')
         self.active_until = self.now
         self.active_kind = None
+        self.motion = None
 
     def is_stopped(self):
         return self.now >= self.active_until

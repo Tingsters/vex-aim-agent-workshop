@@ -36,14 +36,15 @@ command argument or write it to a file.
    the robot switched on. Check `vexaim bluetooth pair --help` for `--code-stdin`.
    If it is missing, the installed CLI is too old: tell the student, and either
    update it or fall back to the masked terminal prompt in the vex-aim skill.
-2. Ask the student to watch the robot's screen, then start pairing with the code
-   read from a named pipe, because the code only appears after the request starts:
-   `mkfifo PIPE`, then in the background
-   `"<Tool path>" --name NAME bluetooth pair --code-stdin <> PIPE`. Put PIPE in
-   a private temporary folder and delete it afterward.
+2. Ask the student to watch the robot's screen, then start pairing with stdin
+   held open: the code appears only after the request starts. Use a persistent
+   tool process with writable stdin when available. For Windows CMD/PowerShell
+   and tools without process stdin, follow `references/connection-and-retries.md`.
 3. Ask for the code in chat, write it to the pipe, and wait for
    `Paired NAME; credential saved`. It has about two minutes before timing out.
-4. Start the session and read live status (no movement) before anything else.
+4. Start with `--name NAME session start --persistent --takeover`. Startup reads
+   live state without movement. Check `session start --help` for these flags;
+   update the released CLI/basic skill together if they are missing.
 
 A wrong or expired code needs a fresh pairing request, not a retry of the old one.
 
@@ -58,8 +59,8 @@ A wrong or expired code needs a fresh pairing request, not a retry of the old on
   using sensor results and command completion. Don't require the student to
   confirm every light, face, kick or movement. Say what ran or what the sensors
   reported; don't claim exact physical accuracy from an acknowledgment.
-- **A dropped link is not proof of sleep.** Follow the basic skill's recovery;
-  ask for power-on only when needed. Never replay uncertain movement. Use its
+- **A dropped link is not proof of sleep.** Let persistent-session recovery run;
+  inspect cached status before asking for a power cycle. Never replay uncertain movement. Use its
   published firmware compatibility evidence rather than private keepalive probes.
 - **If a call fails, read the whole error.** A blank or odd error can hide the
   real cause; report it faithfully instead of guessing, and note it for the CLI
@@ -75,6 +76,20 @@ to carry out that idea. Give one short announcement and execute; do not ask
 "ready?", "may I move/kick?" or "did that work?" before continuing a healthy task.
 Ordinary bumps into kit objects or sneakers are normal play, not an automatic
 failure. Expressive kicks can be part of a dance or greeting without cargo.
+
+Keep the persistent owner across prompts, chats, student changes and workshop
+breaks, including when the agent app closes. Pairing credentials remain local
+across days. Do not close the connection at activity completion or ordinary
+wrap-up. Explicit "disconnect" or "hand over this robot" releases it without
+forgetting pairing. Another computer's pairing must not cause this computer to
+fight for control. Automatic handoff depends on the tested firmware; if a second
+computer cannot pair while connected, perform one explicit handoff. See
+`references/connection-and-retries.md` for recovery and Windows invocation.
+
+"Try again" or a new activity authorizes replacing the current student program
+on this selected robot without another question. Cancel superseded work, check
+live stopped state and execute the revised activity once. This differs from
+automatically replaying a movement after uncertain delivery.
 
 Compose a compound request into **one transient Python execution** with its
 whole sequence and robot-side decisions. Use a single native command for a
@@ -93,8 +108,10 @@ Use native holonomic motion rather than mixing individual wheel speeds.
 Make custom movement finite on the robot itself: use a private Timer, bounded
 loops and nonblocking motion with deadline checks. Stop wheels in `finally`.
 The host exec timeout alone is insufficient if the link disappears. Budget
-about 20 seconds for an ordinary routine, extending deliberately for a longer
-game; keep source/timeout within the basic skill's session limits. Use
+up to 30 seconds for an ordinary routine, 60 seconds for CLI execution and 120
+seconds for the outer shell/tool call. Extend deliberately for a longer game;
+setup, source transfer and cleanup need time too. Keep source/timeout within
+the basic skill's session limits, and check every movement-wait result. Use
 `robot.stop_all_movement()` for routine cleanup so the final face/drawing stays
 visible; reserve CLI `stop` for stopping/cancelling work. Never automatically
 replay a sequence after uncertain delivery. Follow an explicit "don't move" or
@@ -102,6 +119,10 @@ other student constraint even when adding creative effects.
 
 See `references/fast-behaviors.md` for adaptable, finite VEX Python examples.
 Do not turn these examples into a fixed menu or require a new student SDK.
+For pickup and delivery, read `references/cargo-and-tags.md`: collection needs
+deliberate magnetic contact and the requested cargo predicate, not a visual
+stand-off. Use a bounded 200 MMPS contact advance with robot-side checks and
+one automatic alignment/contact retry. Limit search by time and angular travel.
 
 If the user requests unattended stationary work, gather setup and pairing up
 front and rehearse an audible cue from the computer. Confirm they heard it and

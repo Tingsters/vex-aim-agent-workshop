@@ -34,6 +34,54 @@ class WorkshopBehaviors(unittest.TestCase):
                 self.assertLessEqual(result['elapsed_ms'], 20020)
                 self.assertFalse(any(t['op'] == 'screen.show_emoji' for t in result['trace']))
 
+    def delivery_source(self):
+        text = (ROOT / 'skill/vex-aim-workshop/references/cargo-and-tags.md').read_text()
+        return re.findall(r'```python\n(.*?)```', text, re.S)[0]
+
+    def test_vision_reads_alone_cannot_collect_cargo(self):
+        source = '\n'.join(['robot.vision.get_data(BLUE_BARREL)' for _ in range(50)]) + '\nprint(robot.has_blue_barrel())'
+        result = run_source(source, FIXTURES['delivery'])
+        self.assertEqual(result['output'].strip(), 'False')
+        self.assertIsNone(result['held'])
+
+    def test_contact_delivery_verifies_collection_then_placement(self):
+        result = run_source(self.delivery_source(), FIXTURES['delivery'])
+        self.assertIsNone(result['error'])
+        final = json.loads(result['output'].splitlines()[-1])
+        self.assertTrue(final['ok'])
+        self.assertTrue(final['collected_blue'])
+        self.assertEqual(final['released_near_tag'], 0)
+        self.assertIsNone(result['held'])
+        self.assertTrue(result['stopped'])
+        self.assertTrue(any(t['op'] == 'move_for' and t['args'][2:4] == [200, 'MMPS'] for t in result['trace']))
+
+    def test_stalled_contact_never_claims_delivery(self):
+        result = run_source(self.delivery_source(), FIXTURES['delivery'], stalled=True)
+        self.assertIn('deadline', result['error'])
+        self.assertTrue(result['stopped'])
+        self.assertFalse(any(t['op'] in ('kicker.place', 'screen.show_emoji') for t in result['trace']))
+
+    def test_wide_offcenter_barrel_is_aligned_before_contact(self):
+        fixture = dict(FIXTURES['delivery'], bearings=[35], widths=[150])
+        result = run_source(self.delivery_source(), fixture)
+        self.assertEqual(result['error'], 'not_found')
+        self.assertFalse(any(t['op'] in ('move_for', 'move_at') for t in result['trace']))
+        self.assertLessEqual(result['elapsed_ms'], 6100)
+
+    def test_failed_contact_gets_one_retry_without_false_success(self):
+        result = run_source(self.delivery_source(), dict(FIXTURES['delivery'], contact_mm=9999))
+        self.assertEqual(result['error'], 'not_collected')
+        contacts = [t for t in result['trace'] if t['op'] == 'move_for' and t['args'][2] == 200]
+        self.assertEqual(len(contacts), 2)
+        self.assertFalse(any(t['op'] in ('kicker.place', 'screen.show_emoji') for t in result['trace']))
+
+    def test_missing_tag_preserves_cargo_and_does_not_place(self):
+        result = run_source(self.delivery_source(), dict(FIXTURES['delivery'], tag=False))
+        self.assertEqual(result['error'], 'tag_0_not_found')
+        self.assertEqual(result['held'], 'BLUE_BARREL')
+        self.assertFalse(any(t['op'] == 'kicker.place' for t in result['trace']))
+        self.assertLess(result['elapsed_ms'], 10000)
+
     def test_motion_exception_still_stops_and_does_not_celebrate(self):
         for source in self.examples[:2]:
             result = run_source(source, fail_motion=True)
@@ -46,7 +94,7 @@ class WorkshopBehaviors(unittest.TestCase):
         result = run_source(self.examples[2])
         self.assertIsNone(result['error'])
         self.assertTrue(result['stopped'])
-        self.assertEqual(result['elapsed_ms'], 20000)
+        self.assertLessEqual(result['elapsed_ms'], 6100)
         self.assertIn('not_found', result['output'])
         self.assertFalse(any(t['op'] == 'screen.show_emoji' for t in result['trace']))
 
@@ -114,6 +162,33 @@ class WorkshopBehaviors(unittest.TestCase):
             with self.subTest(case=case['id']):
                 result = evaluate(case)
                 self.assertTrue(result['pass'], [c for c in result['checks'] if not c['pass']])
+
+    def test_independent_pickup_and_explicit_retry_plans(self):
+        cases = json.loads((ROOT / 'dev/workshop-evals/recovery.json').read_text())['cases']
+        for case in cases[:2]:
+            self.assertEqual(case['questions'], [])
+            self.assertEqual(case['host_ops'].count('exec'), 1)
+            self.assertGreaterEqual(case['outer_timeout'], case['timeout'] + 60)
+            for scenario in ('normal', 'stalled', 'missing_tag'):
+                with self.subTest(case=case['id'], scenario=scenario):
+                    fixture = dict(FIXTURES['delivery'], tag=scenario != 'missing_tag')
+                    result = run_source(case['source'], fixture, stalled=scenario == 'stalled')
+                    self.assertTrue(result['stopped'])
+                    self.assertLess(result['elapsed_ms'], 30000)
+                    celebrated = any(t['op'] == 'screen.show_emoji' for t in result['trace'])
+                    if scenario == 'normal':
+                        self.assertIsNone(result['error'])
+                        self.assertIsNone(result['held'])
+                        self.assertTrue(celebrated)
+                    else:
+                        self.assertIsNotNone(result['error'])
+                        self.assertFalse(celebrated)
+                        self.assertFalse(any(t['op'] == 'kicker.place' for t in result['trace']))
+        self.assertEqual(cases[1]['host_ops'], ['stop', 'info', 'exec'])
+        self.assertEqual(cases[2]['questions'], [])
+        self.assertEqual(cases[2]['host_ops'], ['wait', 'session status', 'info', 'camera observe', 'view_image'])
+        self.assertEqual(cases[3]['host_ops'], ['session close'])
+        self.assertEqual(cases[4]['host_ops'], [])
 
     def test_generated_finite_motions_have_working_robot_deadlines(self):
         cases = json.loads((ROOT / 'dev/workshop-evals/accepted.json').read_text())['cases']

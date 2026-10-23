@@ -7,15 +7,15 @@ Read the basic skill for actual installed API availability and firmware recovery
 Run a complete block with the installed Tool path and retained session ID:
 
 ```sh
-"<Tool path>" --json --session ID exec --timeout 30 -f behavior.py
+"<Tool path>" --json --session ID exec --timeout 60 -f behavior.py
 ```
 
-PowerShell: `& "<Tool path>" --json --session ID exec --timeout 30 -f behavior.py`.
+PowerShell: `& "<Tool path>" --json --session ID exec --timeout 60 -f behavior.py`.
 The agent writes the script; the student doesn't need to edit code or use a
 terminal. Source stays local, transient on the robot, below the session's 48 KiB
-source limit. The session accepts host timeouts of 1..120 seconds. Give the host
-a few seconds beyond the robot's own budget. Extend both for longer requested
-games rather than splitting a routine into many host commands.
+source limit. The session accepts host timeouts of 1..120 seconds. Default to 30 seconds on AIM, 60 for CLI execution, and 120 seconds for the
+outer tool call. Setup, upload and cleanup need their own margin. Extend these
+budgets deliberately rather than splitting a routine into many host commands.
 
 Every movement example uses nonblocking native calls and a private robot Timer.
 Polling happens on AIM, not through the laptop. The deadline still works without
@@ -98,30 +98,59 @@ Use the native model for kit cargo instead of downloading photographs. This
 adapts the official [VEX macros](https://api.vex.com/aim/home/python/Macro.html)
 and [AI Vision API](https://api.vex.com/aim/home/python/AI_Vision.html), adding a
 finite search and target-loss handling. The native coordinate system is 320x240;
-`bearing` is degrees and `width` is pixels, not a distance sensor.
+`bearing` is degrees and `width` is pixels, not a distance sensor. A large
+bounding box starts a bounded contact advance; only possession completes
+collection. Read `cargo-and-tags.md` for the complete barrel-to-tag delivery.
 
 ```python
 clock = Timer()
 seen = False
 last_seen_ms = 0
 outcome = "not_found"
+contacts = 0
+last_rotation = robot.inertial.get_rotation()
+searched_degrees = 0
 try:
     robot.vision.model_detection(True)
     while clock.time(MSEC) < 20000:
         now = clock.time(MSEC)
-        if robot.vision.has_orange_barrel():
+        if robot.has_orange_barrel():
             outcome = "collected"
+            break
+        rotation = robot.inertial.get_rotation()
+        searched_degrees += abs(rotation - last_rotation)
+        last_rotation = rotation
+        if searched_degrees >= 360:
             break
         objects = [o for o in robot.vision.get_data(ORANGE_BARREL, 4) if o.exists]
         if objects:
             seen = True
             last_seen_ms = now
-            obj = objects[0]
-            if abs(obj.bearing) > 12:
+            obj = max(objects, key=lambda o: o.width)
+            if abs(obj.bearing) > 10:
                 robot.turn(LEFT if obj.bearing < 0 else RIGHT, 60, DPS)
+            elif obj.width >= 90:
+                if contacts >= 2:
+                    outcome = "not_collected"
+                    break
+                robot.stop_all_movement()
+                robot.move_for(200, 0, 200, MMPS, False)
+                began = clock.time(MSEC)
+                while not robot.is_stopped() and not robot.has_orange_barrel():
+                    if clock.time(MSEC) - began >= 2000 or clock.time(MSEC) >= 20000:
+                        raise RuntimeError("Collection movement deadline reached")
+                    wait(25, MSEC)
+                robot.stop_all_movement()
+                contacts += 1
+                if not robot.has_orange_barrel() and contacts == 1:
+                    robot.move_for(50, 180, 150, MMPS, False)
+                    began = clock.time(MSEC)
+                    while not robot.is_stopped():
+                        if clock.time(MSEC) - began >= 2000 or clock.time(MSEC) >= 20000:
+                            raise RuntimeError("Backoff movement deadline reached")
+                        wait(25, MSEC)
             else:
-                # Holonomic travel toward the target; slow only near collection.
-                robot.move_at(obj.bearing, 90 if obj.width > 90 else 150, MMPS)
+                robot.move_at(obj.bearing, 150, MMPS)
         elif not seen:
             robot.turn(RIGHT, 60, DPS)
         else:
