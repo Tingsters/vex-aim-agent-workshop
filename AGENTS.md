@@ -29,7 +29,8 @@ Read the installed vex-aim SKILL.md before interacting with the robot. Use the
 connection the student requested. Ask which transport they want only if unclear.
 For Bluetooth, get the exact robot name, ask for power-on when needed, keep
 VEXcode closed, and follow the basic skill's pairing/session workflow. Use
-vexaim 0.4.0 or newer with its matching basic skill. Start the original pairing
+vexaim 0.4.0 or newer with its matching basic skill. On Windows use 0.4.1 or newer
+for the pairing-pipeline and Bluetooth reliability fixes. Start the original pairing
 process first; only then ask for the four-digit code now displayed on the robot.
 Keep that process alive across the student's reply and deliver the code on stdin.
 Windows agents with short-lived shell calls use the shipped
