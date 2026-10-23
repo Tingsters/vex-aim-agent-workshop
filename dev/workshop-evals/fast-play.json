@@ -1,0 +1,30 @@
+{
+  "scope": "Independent bounded delegate evaluation of 0.5.1 fast-play skills; simulated, no robot",
+  "invocation": "vexaim --json --session SESSION exec --behaviors --timeout 60 -f activity.py",
+  "outer_timeout_seconds": 150,
+  "questions": [],
+  "host_ops": [
+    "exec"
+  ],
+  "cases": [
+    {
+      "prompt": "Pick up the blue barrel and deliver it to the purple 0 tag",
+      "cargo": "BLUE_BARREL",
+      "tag": "TAG0",
+      "source": "import json\nbehaviors.configure(move_mmps=150, turn_dps=45, tag_turn_dps=90, contact_mmps=200, verification=\"contact\", timeout_ms=30000)\npickup = behaviors.collect(BLUE_BARREL)\ndelivery = behaviors.deliver(BLUE_BARREL, TAG0)\nprint(json.dumps({\"pickup\": pickup, \"delivery\": delivery}))"
+    },
+    {
+      "prompt": "Now orange barrel to Tag 2, then smile",
+      "cargo": "ORANGE_BARREL",
+      "tag": "TAG2",
+      "source": "import json\nbehaviors.configure(move_mmps=150, turn_dps=45, tag_turn_dps=90, contact_mmps=200, verification=\"contact\", timeout_ms=30000)\npickup = behaviors.collect(ORANGE_BARREL)\ndelivery = behaviors.deliver(ORANGE_BARREL, TAG2)\nrobot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\nprint(json.dumps({\"pickup\": pickup, \"delivery\": delivery, \"expression\": \"HAPPY requested\"}))"
+    },
+    {
+      "prompt": "Find the ball behind you and kick it",
+      "cargo": "SPORTS_BALL",
+      "tag": null,
+      "source": "import json\nbehaviors.configure(move_mmps=150, turn_dps=45, tag_turn_dps=90, contact_mmps=200, verification=\"contact\", timeout_ms=30000)\npickup = behaviors.collect(SPORTS_BALL)\nrobot.kicker.kick(MEDIUM)\nprint(json.dumps({\"pickup\": pickup, \"kick\": \"MEDIUM completed\"}))"
+    }
+  ],
+  "assumed_evidence_handling": "Continue within the same script when completed is true with contact_assumed/place_assumed and null collected/delivered. No host image, extra question or possession gate; describe routine completion rather than independent physical verification."
+}

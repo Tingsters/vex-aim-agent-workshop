@@ -28,6 +28,11 @@ try {
   $target=Join-Path $work 'home with spaces'
   Install $target @('-DryRun','-FromDir','not-a-real-directory')
   Check (-not (Test-Path $target)) 'dry run writes nothing and needs no download'
+  $oldAssets=Join-Path $work 'old-assets'
+  Copy-Item -LiteralPath $assets -Destination $oldAssets -Recurse
+  '0.5.0' | Set-Content -LiteralPath (Join-Path $oldAssets 'VERSION')
+  Install $target @('-FromDir',$oldAssets) 'requires vexaim 0.5.1'
+  Check (-not (Test-Path $target)) 'old behavior release creates neither skill'
   Install $target @('-FromDir',$assets)
   foreach ($agent in @('.agents','.claude')) {
     $base=Join-Path $target "$agent/skills"

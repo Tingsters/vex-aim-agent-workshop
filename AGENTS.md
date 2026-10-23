@@ -29,7 +29,7 @@ Read the installed vex-aim SKILL.md before interacting with the robot. Use the
 connection the student requested. Ask which transport they want only if unclear.
 For Bluetooth, get the exact robot name, ask for power-on when needed, keep
 VEXcode closed, and follow the basic skill's pairing/session workflow. Use
-vexaim 0.5.0 or newer with its matching basic skill, including the `exec --behaviors`
+vexaim 0.5.1 or newer with its matching basic skill, including the `exec --behaviors`
 interface for composed native vision activities. Start the original pairing
 process first; only then ask for the four-digit code now displayed on the robot.
 Keep that process alive across the student's reply and deliver the code on stdin.
@@ -48,6 +48,8 @@ chats and workshop breaks. Explicit disconnect/handoff closes it without forgett
 pairing; ordinary wrap-up does not. Wait for automatic same-robot recovery before
 asking for power cycling. A fresh student request authorizes replacing any old
 student program on that selected robot. Do not ask for a USB reconnect over Bluetooth.
+Warm shared behavior helpers once with `--session ID exec --behaviors "pass"`
+while setup is stationary, so the first play request need not upload them.
 
 For USB, make sure the AIM is switched on and connected with a data cable, then
 run the installed executable's doctor. On Windows use `& "<Tool path>" doctor`.

@@ -100,8 +100,8 @@ the activity; keep the control implementation in the CLI.
 
 ```python
 import json
-behaviors.configure(move_mmps=150, turn_dps=45, contact_mmps=200,
-                    timeout_ms=30000)
+behaviors.configure(move_mmps=150, turn_dps=45, tag_turn_dps=90,
+                    contact_mmps=200, verification="contact", timeout_ms=30000)
 result = behaviors.collect(ORANGE_BARREL)
 robot.led.on(ALL_LEDS, GREEN)
 robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)

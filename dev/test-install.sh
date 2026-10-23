@@ -14,6 +14,10 @@ expect_fail() {
 H1="$WORK/home with spaces"
 check install_to "$H1" --dry-run --from-dir not-a-real-directory
 check test ! -e "$H1"
+OLD="$WORK/old-assets"; cp -R "$ASSETS" "$OLD"
+printf '0.5.0\n' > "$OLD/VERSION"
+expect_fail install_to "$H1" --from-dir "$OLD"
+check test ! -e "$H1"
 check install_to "$H1" --from-dir "$ASSETS"
 for agent in .agents .claude; do
   check test -f "$H1/$agent/skills/vex-aim/SKILL.md"

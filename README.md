@@ -6,7 +6,10 @@ Ask it to move, react, play sounds, change lights, or take a photograph.
 CLI 0.5 adds shared, composable search, pickup and tag-delivery helpers through
 `exec --behaviors`. The workshop selects targets and effects; the CLI owns
 vision feedback, magnetic contact, deadlines and recovery. This workshop
-requires 0.5.0+ and its matching basic skill.
+requires 0.5.1+ and its matching basic skill. Workshop routines use brisk,
+contact-based pickup and paused native tag acquisition in one execution, without
+laptop camera checks between steps. The generic skill retains a vision-verified
+diagnostic mode for testing.
 
 CLI 0.4 added persistent Bluetooth sessions, automatic same-robot recovery and
 quick program replacement. It includes pairing with `--code-stdin`, native

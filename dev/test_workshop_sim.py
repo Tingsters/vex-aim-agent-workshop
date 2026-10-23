@@ -161,7 +161,7 @@ class WorkshopBehaviors(unittest.TestCase):
                 result = evaluate(case)
                 self.assertTrue(result['pass'], [c for c in result['checks'] if not c['pass']])
 
-    def test_current_independent_agent_uses_composable_cli_behaviors(self):
+    def test_initial_independent_agent_uses_composable_cli_behaviors(self):
         evaluation = json.loads((ROOT / 'dev/workshop-evals/behaviors.json').read_text())
         self.assertEqual(evaluation['questions'], [])
         self.assertIn('exec --behaviors', evaluation['invocation'])
@@ -187,6 +187,33 @@ class WorkshopBehaviors(unittest.TestCase):
                         if case['tag']:
                             delivery = next(t for t in result['trace'] if t['op']=='behaviors.deliver')
                             self.assertEqual(delivery['args'], [case['cargo'], case['tag']])
+
+    def test_fast_play_agent_continues_after_assumed_contact_without_host_round_trips(self):
+        evaluation = json.loads((ROOT / 'dev/workshop-evals/fast-play.json').read_text())
+        self.assertEqual(evaluation['questions'], [])
+        self.assertEqual(evaluation['host_ops'], ['exec'])
+        for case in evaluation['cases']:
+            fixture = {'target': case['cargo'], 'tag': bool(case['tag']), 'possession_missing': True}
+            result = run_source(case['source'], fixture)
+            self.assertIsNone(result['error'], result['error'])
+            self.assertTrue(result['stopped'])
+            ops = [t['op'] for t in result['trace']]
+            settings = next(t['args'][0] for t in result['trace'] if t['op']=='behaviors.configure')
+            self.assertEqual(settings['verification'], 'contact')
+            self.assertEqual(settings['tag_turn_dps'], 90)
+            self.assertEqual(settings['contact_mmps'], 200)
+            self.assertEqual(ops.count('behaviors.collect'), 1)
+            self.assertNotIn('vision.get_data', case['source'])
+            outcome = json.loads(result['output'].splitlines()[-1])
+            self.assertIsNone(outcome['pickup']['collected'])
+            self.assertTrue(outcome['pickup']['completed'])
+            if case['tag']:
+                self.assertIn('behaviors.deliver', ops)
+                self.assertIsNone(outcome['delivery']['delivered'])
+            else:
+                self.assertIn('kicker.kick', ops)
+            if 'smile' in case['prompt']:
+                self.assertIn('screen.show_emoji', ops)
 
     def test_independent_pickup_and_explicit_retry_plans(self):
         cases = json.loads((ROOT / 'dev/workshop-evals/recovery.json').read_text())['cases']

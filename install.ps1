@@ -58,6 +58,9 @@ try {
   }
   $version=(Get-Content -Raw (Join-Path $temporary 'VERSION')).Trim()
   if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$') { throw 'invalid CLI release version' }
+  if ([version](($version -split '-')[0]) -lt [version]'0.5.1' -or $version -like '0.5.1-*') {
+    throw 'This workshop requires vexaim 0.5.1+ for contact-based play and stationary tag search; no skills changed.'
+  }
   if (-not $FromDir) {
     $release=$BaseUrl
     if (-not $release) { $release="$Repo/releases/download/v$version" }
@@ -77,7 +80,7 @@ try {
   $tool=Join-Path (Split-Path $destinations[0] -Parent) 'vex-aim/bin/vexaim.exe'
   $behaviorHelp=& $tool exec --help
   if ($LASTEXITCODE -ne 0 -or ($behaviorHelp -join "`n") -notmatch '--behaviors') {
-    throw 'This workshop requires vexaim 0.5.0+ with exec --behaviors; update the CLI release assets. Teaching skill was not installed.'
+    throw 'This workshop requires vexaim 0.5.1+ with exec --behaviors; update the CLI release assets. Teaching skill was not installed.'
   }
   foreach ($d in $destinations) {
     $parent=Split-Path $d -Parent

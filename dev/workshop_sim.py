@@ -22,9 +22,11 @@ class BehaviorContract:
     """Public API stub only. Controller/physics tests belong in vexaim-cli."""
     def __init__(self, aim):
         self.aim = aim
+        self.contact_play = False
 
     def configure(self, **settings):
         self.aim.record('behaviors.configure', settings)
+        self.contact_play = settings.get('verification') == 'contact'
 
     def collect(self, cargo):
         aim = self.aim
@@ -40,7 +42,9 @@ class BehaviorContract:
         if aim.fixture.get('lose_after'):
             raise RuntimeError('target_lost_before_contact')
         aim.held = cargo
-        return {'collected': True, 'target': cargo, 'evidence': 'stub_contract'}
+        assumed = self.contact_play and aim.fixture.get('possession_missing')
+        return {'collected': None if assumed else True, 'completed': True,
+                'target': cargo, 'evidence': 'contact_assumed' if assumed else 'stub_contract'}
 
     def find(self, target, direction='RIGHT'):
         self.aim.record('behaviors.find', target, direction)
@@ -62,7 +66,9 @@ class BehaviorContract:
         if not aim.fixture.get('tag'):
             raise RuntimeError('not_found')
         aim.held = None
-        return {'delivered': True, 'cargo': cargo, 'destination': tag, 'evidence': 'stub_contract'}
+        assumed = self.contact_play and aim.fixture.get('possession_missing')
+        return {'delivered': None if assumed else True, 'completed': True,
+                'cargo': cargo, 'destination': tag, 'evidence': 'place_assumed' if assumed else 'stub_contract'}
 FIXTURES = {
     'spin': {},
     'dance': {},

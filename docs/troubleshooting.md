@@ -10,7 +10,7 @@ not reclaim changed Bluetooth credentials from another computer. See
 
 - **Only one skill appears:** rerun the workshop installer, then start a new
   agent session. It installs vex-aim (robot control) and vex-aim-workshop (teaching).
-- **`exec --behaviors` is missing:** this teaching skill requires CLI 0.5.0+.
+- **`exec --behaviors` or contact verification is missing:** this teaching skill requires CLI 0.5.1+.
   Update the CLI/basic skill together using the installer. Older offline assets
   are rejected before installing teaching instructions that require the new API.
 - **Download or checksum failure:** retry on a working connection or download

@@ -46,6 +46,11 @@ command argument or write it to a file.
    live state without movement. Check `session start --help` for these flags;
    update the released CLI/basic skill together if they are missing.
 
+After stationary setup, warm the shared helpers once with
+`--session ID exec --behaviors "pass"`. This loads them before the first play
+request. Reuse the owner; don't repeat warmup or status checks before every
+healthy activity.
+
 A wrong or expired code needs a fresh pairing request, not a retry of the old one.
 
 ## Known pitfalls
@@ -121,13 +126,22 @@ See `references/fast-behaviors.md` for adaptable, finite VEX Python examples.
 Do not turn these examples into a fixed menu or require a new student SDK.
 For pickup and delivery, read `references/cargo-and-tags.md`: collection needs
 deliberate magnetic contact and the requested cargo predicate. Use vexaim
-**0.5.0+** with `exec --behaviors` and its matching generic skill. Compose the
+**0.5.1+** with `exec --behaviors` and its matching generic skill. Compose the
 CLI's `behaviors.find`, `collect`, `approach` and `deliver` with native effects;
 do not regenerate or copy vision-control loops into workshop scripts. Check
 `exec --help` once before play and update the released tool/basic skill if the
-flag is absent. Configure 150 MMPS approach, 45 DPS acquisition and 200 MMPS
-contact with a shared 30-second budget. Acquisition pace gives the detector
-time to see cargo during one sweep. Helper failure skips later success effects.
+flag is absent. Configure 150 MMPS approach, 45 DPS cargo acquisition, 90 DPS
+between tag views, 200 MMPS contact, `verification="contact"` and a shared
+30-second budget. The CLI handles brief stationary tag views internally.
+Normal play assumes a bounded contact attempt worked and continues to the tag
+without a retention reverse, repeated possession gates, laptop photographs or
+agent analysis between steps. Treat `completed: true` with assumed evidence as
+routine completion; a null confirmation field is not a new failure or a request
+to photograph the robot. Diagnostic `verification="vision"` is for explicit
+testing. A missing target, expired activity or transport error still stops work.
+Report that the routine ran; don't claim independent physical verification when
+its evidence is assumed. Save camera inspection for an explicit visual request,
+an unfamiliar target or a failure that needs a different strategy.
 
 If the user requests unattended stationary work, gather setup and pairing up
 front and rehearse an audible cue from the computer. Confirm they heard it and
