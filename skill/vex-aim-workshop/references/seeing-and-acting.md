@@ -16,6 +16,11 @@ class/ID; use bearing for direction and the appropriate cargo predicate for
 collection. Pixel width is a proximity cue, not a millimetre range measurement.
 The native model cannot recognize an arbitrary controller, person or drawing.
 Configured colors/codes must actually exist; don't invent a trained signature.
+For a distinctive-colored target, the agent can create a runtime `Colordesc`
+and register it with `robot.vision.color_description(...)` through the documented
+VEX API. Check that its detections match the intended object before using it as
+a fast search/tracking proxy. This configures color detection; it does not train
+an arbitrary object class or require the student to use a USB color utility.
 
 ## Agent image understanding for meaning
 
@@ -41,6 +46,17 @@ Another image is useful when a target moved, the first image is ambiguous,
 a search needs a new view, or a later story/game checkpoint needs interpretation.
 It is not mandatory after each motion or to verify every effect. Laptop snapshots
 are observations for planning, not a real-time camera servo.
+
+If the requested target starts outside view, prefer a native bounded search when
+the target has a supported class or a validated distinctive color/code. For an
+arbitrary object, include camera-transfer time across the whole search rather
+than assuming one front-facing photograph is enough. A previously identified
+object can sometimes be matched locally from a reference; this is visual memory,
+not training a new AIM class. Use only an available, validated helper and keep
+reference photos local. Prepare optional dependencies before the activity and
+promise a fast arbitrary-object search only after measuring the complete route.
+Do not replace a requested
+Bluetooth connection with another transport.
 
 ## Combine semantic choices with native tracking
 
