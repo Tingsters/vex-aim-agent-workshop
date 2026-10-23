@@ -1,5 +1,13 @@
 # Workshop troubleshooting
 
+For an awake robot that times out over Bluetooth, first inspect cached session
+state. vexaim 0.4 automatically rebuilds a lost same-robot connection; wait for
+`ready`, then read live `info`. Do not immediately unpair or request a restart.
+If an old student program blocks a new activity, `session start --persistent
+--takeover` replaces it under the workshop's new-request/retry policy. This does
+not reclaim changed Bluetooth credentials from another computer. See
+[Bluetooth setup and handoff](bluetooth.md).
+
 - **Only one skill appears:** rerun the workshop installer, then start a new
   agent session. It installs vex-aim (robot control) and vex-aim-workshop (teaching).
 - **Download or checksum failure:** retry on a working connection or download

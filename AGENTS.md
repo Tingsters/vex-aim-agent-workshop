@@ -28,16 +28,25 @@ need Rust, Python packages, VEXcode or a saved robot project.
 Read the installed vex-aim SKILL.md before interacting with the robot. Use the
 connection the student requested. Ask which transport they want only if unclear.
 For Bluetooth, get the exact robot name, ask for power-on when needed, keep
-VEXcode closed, and follow the basic skill's pairing/session workflow. To keep
-the workshop approachable, pair directly: ask the student for the four-digit
-code shown on the robot's screen in chat and run
-`"<Tool path>" --name NAME bluetooth pair --code-stdin <<< CODE` (on Windows
-PowerShell, `'CODE' | & "<Tool path>" --name NAME bluetooth pair --code-stdin`).
-This accepts a small security trade-off (the short-lived code appears in the
-agent transcript) in exchange for students not opening a terminal. Check
-`bluetooth pair --help` first: if the installed vexaim has no `--code-stdin`,
-fall back to the masked terminal prompt, and never put the code in command
-arguments. Do not ask for a USB reconnect when using Bluetooth.
+VEXcode closed, and follow the basic skill's pairing/session workflow. Use
+vexaim 0.4.0 or newer with its matching basic skill. Start the original pairing
+process first; only then ask for the four-digit code now displayed on the robot.
+Keep that process alive across the student's reply and deliver the code on stdin.
+Windows agents with short-lived shell calls use the shipped
+`vex-aim/scripts/pair.ps1` bridge; see the basic skill's Bluetooth reference.
+Do not redirect stdin from a missing/empty code file or restart pairing to submit
+the code. Codes must not be command arguments, saved files or committed logs.
+The workshop accepts the small trade-off that a chat-supplied code appears in the
+agent transcript. Students need not open a terminal.
+
+Check `session start --help` and `bluetooth pair --help` for `--persistent`,
+`--takeover` and `--code-stdin`. Update the matching CLI/skill if absent. After
+pairing, use `--name NAME session start --persistent --takeover`, reuse the ID
+and perform a live stationary info check. Preserve that owner across prompts,
+chats and workshop breaks. Explicit disconnect/handoff closes it without forgetting
+pairing; ordinary wrap-up does not. Wait for automatic same-robot recovery before
+asking for power cycling. A fresh student request authorizes replacing any old
+student program on that selected robot. Do not ask for a USB reconnect over Bluetooth.
 
 For USB, make sure the AIM is switched on and connected with a data cable, then
 run the installed executable's doctor. On Windows use `& "<Tool path>" doctor`.

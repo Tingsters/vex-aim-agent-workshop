@@ -90,3 +90,10 @@ rehearsed computer cue; it is separate from these ordinary play activities.
 
 Keep photographs, scripts and the student's Showtail trail local unless sharing
 is explicitly requested. Don't add photos to Git or duplicate automatic capture.
+
+For generated artwork, AIM's screen is 240 by 240 pixels. VEX
+`draw_rectangle(x, y, width, height)` takes dimensions, not an opposite corner.
+Keep shapes within `0..239`; use simple circles, lines, filled rectangles and text
+for a recognizable picture in one script. Validate the coordinates before upload,
+clear AI Vision/emoji overlays first, and describe the actual result rather than
+claiming a photograph or generated image was displayed when only primitives ran.

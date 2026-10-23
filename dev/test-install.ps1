@@ -32,6 +32,9 @@ try {
   foreach ($agent in @('.agents','.claude')) {
     $base=Join-Path $target "$agent/skills"
     Check ((Test-Path "$base/vex-aim/SKILL.md") -and (Test-Path "$base/vex-aim/bin/vexaim.exe")) "$agent has released CLI/basic skill"
+    Check (Test-Path "$base/vex-aim/scripts/pair.ps1") "$agent has the matching Windows pairing bridge"
+    $sessionHelp = & "$base/vex-aim/bin/vexaim.exe" session start --help
+    Check (($sessionHelp -join "`n") -match '--persistent' -and ($sessionHelp -join "`n") -match '--takeover') "$agent CLI supports persistent sessions and program replacement"
     Check ((Test-Path "$base/vex-aim-workshop/SKILL.md") -and -not (Test-Path "$base/vex-aim-workshop/bin")) "$agent has a separate teaching skill"
     foreach ($reference in (Get-ChildItem -LiteralPath (Join-Path $repo 'skill/vex-aim-workshop/references') -File)) {
       $installedReference=Join-Path "$base/vex-aim-workshop/references" $reference.Name

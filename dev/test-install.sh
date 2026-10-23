@@ -18,6 +18,10 @@ check install_to "$H1" --from-dir "$ASSETS"
 for agent in .agents .claude; do
   check test -f "$H1/$agent/skills/vex-aim/SKILL.md"
   check test -x "$H1/$agent/skills/vex-aim/bin/vexaim"
+  check test -f "$H1/$agent/skills/vex-aim/scripts/pair.ps1"
+  session_help=$("$H1/$agent/skills/vex-aim/bin/vexaim" session start --help)
+  case "$session_help" in *--persistent*) pass=$((pass+1));; *) printf 'CLI needs --persistent\n' >&2; exit 1;; esac
+  case "$session_help" in *--takeover*) pass=$((pass+1));; *) printf 'CLI needs --takeover\n' >&2; exit 1;; esac
   check test -f "$H1/$agent/skills/vex-aim-workshop/SKILL.md"
   check test ! -d "$H1/$agent/skills/vex-aim-workshop/bin"
   for reference in "$HERE"/skill/vex-aim-workshop/references/*.md; do
