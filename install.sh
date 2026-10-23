@@ -82,6 +82,9 @@ install_cli() {
   sh "$TMP/install.sh" "$@"
 }
 install_cli || die 'CLI installation failed; workshop skill was not installed'
+tool=$(dirname -- "$1")/vex-aim/bin/vexaim
+behavior_help=$("$tool" exec --help) || die 'cannot inspect the installed CLI'
+case "$behavior_help" in *--behaviors*) ;; *) die 'this workshop requires vexaim 0.5.0+ with exec --behaviors; update CLI release assets; teaching skill was not installed';; esac
 for d do
   stage=$d.stage-$$; backup=$d.backup-$$
   if [ -e "$stage" ] || [ -e "$backup" ]; then die 'staging folder already exists'; fi

@@ -120,9 +120,14 @@ other student constraint even when adding creative effects.
 See `references/fast-behaviors.md` for adaptable, finite VEX Python examples.
 Do not turn these examples into a fixed menu or require a new student SDK.
 For pickup and delivery, read `references/cargo-and-tags.md`: collection needs
-deliberate magnetic contact and the requested cargo predicate, not a visual
-stand-off. Use a bounded 200 MMPS contact advance with robot-side checks and
-one automatic alignment/contact retry. Limit search by time and angular travel.
+deliberate magnetic contact and the requested cargo predicate. Use vexaim
+**0.5.0+** with `exec --behaviors` and its matching generic skill. Compose the
+CLI's `behaviors.find`, `collect`, `approach` and `deliver` with native effects;
+do not regenerate or copy vision-control loops into workshop scripts. Check
+`exec --help` once before play and update the released tool/basic skill if the
+flag is absent. Configure 150 MMPS approach, 45 DPS acquisition and 200 MMPS
+contact with a shared 30-second budget. Acquisition pace gives the detector
+time to see cargo during one sweep. Helper failure skips later success effects.
 
 If the user requests unattended stationary work, gather setup and pairing up
 front and rehearse an audible cue from the computer. Confirm they heard it and

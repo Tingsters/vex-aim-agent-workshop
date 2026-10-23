@@ -74,6 +74,11 @@ try {
   $shell=(Get-Process -Id $PID).Path
   & $shell @arguments
   if ($LASTEXITCODE -ne 0) { throw 'CLI installation failed; workshop skill was not installed' }
+  $tool=Join-Path (Split-Path $destinations[0] -Parent) 'vex-aim/bin/vexaim.exe'
+  $behaviorHelp=& $tool exec --help
+  if ($LASTEXITCODE -ne 0 -or ($behaviorHelp -join "`n") -notmatch '--behaviors') {
+    throw 'This workshop requires vexaim 0.5.0+ with exec --behaviors; update the CLI release assets. Teaching skill was not installed.'
+  }
   foreach ($d in $destinations) {
     $parent=Split-Path $d -Parent
     $stage="$d.stage-$([guid]::NewGuid().ToString('N'))"

@@ -48,12 +48,14 @@ class WorkshopBehaviors(unittest.TestCase):
         result = run_source(self.delivery_source(), FIXTURES['delivery'])
         self.assertIsNone(result['error'])
         final = json.loads(result['output'].splitlines()[-1])
-        self.assertTrue(final['ok'])
-        self.assertTrue(final['collected_blue'])
-        self.assertEqual(final['released_near_tag'], 0)
+        self.assertTrue(final['pickup']['collected'])
+        self.assertTrue(final['delivery']['delivered'])
+        self.assertEqual(final['delivery']['destination'], 'TAG0')
         self.assertIsNone(result['held'])
         self.assertTrue(result['stopped'])
-        self.assertTrue(any(t['op'] == 'move_for' and t['args'][2:4] == [200, 'MMPS'] for t in result['trace']))
+        self.assertEqual([t['op'] for t in result['trace'] if t['op'].startswith('behaviors.')],
+                         ['behaviors.configure', 'behaviors.collect', 'behaviors.deliver'])
+        self.assertIn('contact_mmps=200', self.delivery_source())
 
     def test_stalled_contact_never_claims_delivery(self):
         result = run_source(self.delivery_source(), FIXTURES['delivery'], stalled=True)
@@ -61,23 +63,22 @@ class WorkshopBehaviors(unittest.TestCase):
         self.assertTrue(result['stopped'])
         self.assertFalse(any(t['op'] in ('kicker.place', 'screen.show_emoji') for t in result['trace']))
 
-    def test_wide_offcenter_barrel_is_aligned_before_contact(self):
-        fixture = dict(FIXTURES['delivery'], bearings=[35], widths=[150])
-        result = run_source(self.delivery_source(), fixture)
-        self.assertEqual(result['error'], 'not_found')
-        self.assertFalse(any(t['op'] in ('move_for', 'move_at') for t in result['trace']))
-        self.assertLessEqual(result['elapsed_ms'], 6100)
+    def test_workshop_does_not_duplicate_cli_control_loops(self):
+        for source in (self.delivery_source(), self.examples[2]):
+            self.assertIn('behaviors.collect', source)
+            self.assertNotIn('vision.get_data', source)
+            self.assertNotIn('while ', source)
 
-    def test_failed_contact_gets_one_retry_without_false_success(self):
-        result = run_source(self.delivery_source(), dict(FIXTURES['delivery'], contact_mm=9999))
-        self.assertEqual(result['error'], 'not_collected')
-        contacts = [t for t in result['trace'] if t['op'] == 'move_for' and t['args'][2] == 200]
-        self.assertEqual(len(contacts), 2)
-        self.assertFalse(any(t['op'] in ('kicker.place', 'screen.show_emoji') for t in result['trace']))
+    def test_requested_color_is_a_parameter_not_copied_controller(self):
+        source = self.delivery_source().replace('cargo = BLUE_BARREL', 'cargo = ORANGE_BARREL')
+        result = run_source(source, dict(FIXTURES['delivery'], target='ORANGE_BARREL'))
+        self.assertIsNone(result['error'])
+        calls = [t for t in result['trace'] if t['op'] == 'behaviors.collect']
+        self.assertEqual(calls[0]['args'], ['ORANGE_BARREL'])
 
     def test_missing_tag_preserves_cargo_and_does_not_place(self):
         result = run_source(self.delivery_source(), dict(FIXTURES['delivery'], tag=False))
-        self.assertEqual(result['error'], 'tag_0_not_found')
+        self.assertEqual(result['error'], 'not_found')
         self.assertEqual(result['held'], 'BLUE_BARREL')
         self.assertFalse(any(t['op'] == 'kicker.place' for t in result['trace']))
         self.assertLess(result['elapsed_ms'], 10000)
@@ -92,26 +93,23 @@ class WorkshopBehaviors(unittest.TestCase):
 
     def test_empty_native_search_is_finite_without_host_traffic(self):
         result = run_source(self.examples[2])
-        self.assertIsNone(result['error'])
+        self.assertEqual(result['error'], 'not_found')
         self.assertTrue(result['stopped'])
         self.assertLessEqual(result['elapsed_ms'], 6100)
-        self.assertIn('not_found', result['output'])
         self.assertFalse(any(t['op'] == 'screen.show_emoji' for t in result['trace']))
 
     def test_target_loss_stops_without_false_success(self):
         fixture = {'target': 'ORANGE_BARREL', 'lose_after': 1}
         result = run_source(self.examples[2], fixture)
-        self.assertIsNone(result['error'])
+        self.assertIn('target_lost', result['error'])
         self.assertTrue(result['stopped'])
-        self.assertIn('target_lost', result['output'])
         self.assertLessEqual(result['elapsed_ms'], 650)
 
     def test_wrong_held_cargo_never_counts_as_collection(self):
         result = run_source(self.examples[2], FIXTURES['wrong_cargo'])
-        self.assertIsNone(result['error'])
+        self.assertEqual(result['error'], 'wrong_cargo')
         self.assertTrue(result['stopped'])
         self.assertNotIn('collected', result['output'])
-        self.assertIn('timed_out', result['output'])
         self.assertFalse(any(t['op'] == 'screen.show_emoji' for t in result['trace']))
 
     def test_artwork_has_no_motion_or_kicker_and_clears_overlays(self):
@@ -162,6 +160,33 @@ class WorkshopBehaviors(unittest.TestCase):
             with self.subTest(case=case['id']):
                 result = evaluate(case)
                 self.assertTrue(result['pass'], [c for c in result['checks'] if not c['pass']])
+
+    def test_current_independent_agent_uses_composable_cli_behaviors(self):
+        evaluation = json.loads((ROOT / 'dev/workshop-evals/behaviors.json').read_text())
+        self.assertEqual(evaluation['questions'], [])
+        self.assertIn('exec --behaviors', evaluation['invocation'])
+        self.assertGreaterEqual(evaluation['outer_timeout_seconds'], 120)
+        for case in evaluation['cases']:
+            for failure in (None, 'missing', 'stalled'):
+                with self.subTest(prompt=case['prompt'],failure=failure):
+                    fixture = {'target': case['cargo'], 'tag': bool(case['tag'])}
+                    if failure == 'missing': fixture['target'] = 'AIM_ROBOT'
+                    result = run_source(case['source'], fixture, stalled=failure=='stalled')
+                    ops = [t['op'] for t in result['trace']]
+                    self.assertTrue(result['stopped'])
+                    self.assertNotIn('vision.get_data', case['source'])
+                    self.assertNotIn('Robot()', case['source'])
+                    self.assertEqual(ops.count('behaviors.collect'), 1)
+                    if failure:
+                        self.assertIsNotNone(result['error'])
+                        self.assertNotIn('behaviors.deliver', ops)
+                        self.assertNotIn('screen.show_emoji', ops)
+                        self.assertNotIn('kicker.kick', ops)
+                    else:
+                        self.assertIsNone(result['error'])
+                        if case['tag']:
+                            delivery = next(t for t in result['trace'] if t['op']=='behaviors.deliver')
+                            self.assertEqual(delivery['args'], [case['cargo'], case['tag']])
 
     def test_independent_pickup_and_explicit_retry_plans(self):
         cases = json.loads((ROOT / 'dev/workshop-evals/recovery.json').read_text())['cases']

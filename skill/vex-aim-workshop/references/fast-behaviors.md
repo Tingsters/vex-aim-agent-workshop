@@ -94,94 +94,31 @@ robot-side duration and final stop. Vector values are percentages, not MMPS/DPS.
 
 ## Find, collect and celebrate with native vision
 
-Use the native model for kit cargo instead of downloading photographs. This
-adapts the official [VEX macros](https://api.vex.com/aim/home/python/Macro.html)
-and [AI Vision API](https://api.vex.com/aim/home/python/AI_Vision.html), adding a
-finite search and target-loss handling. The native coordinate system is 320x240;
-`bearing` is degrees and `width` is pixels, not a distance sensor. A large
-bounding box starts a bounded contact advance; only possession completes
-collection. Read `cargo-and-tags.md` for the complete barrel-to-tag delivery.
+Use `exec --behaviors` and the released CLI's shared controller for kit cargo.
+Read `cargo-and-tags.md` for delivery. Change the native cargo constant to adapt
+the activity; keep the control implementation in the CLI.
 
 ```python
-clock = Timer()
-seen = False
-last_seen_ms = 0
-outcome = "not_found"
-contacts = 0
-last_rotation = robot.inertial.get_rotation()
-searched_degrees = 0
-try:
-    robot.vision.model_detection(True)
-    while clock.time(MSEC) < 20000:
-        now = clock.time(MSEC)
-        if robot.has_orange_barrel():
-            outcome = "collected"
-            break
-        rotation = robot.inertial.get_rotation()
-        searched_degrees += abs(rotation - last_rotation)
-        last_rotation = rotation
-        if searched_degrees >= 360:
-            break
-        objects = [o for o in robot.vision.get_data(ORANGE_BARREL, 4) if o.exists]
-        if objects:
-            seen = True
-            last_seen_ms = now
-            obj = max(objects, key=lambda o: o.width)
-            if abs(obj.bearing) > 10:
-                robot.turn(LEFT if obj.bearing < 0 else RIGHT, 60, DPS)
-            elif obj.width >= 90:
-                if contacts >= 2:
-                    outcome = "not_collected"
-                    break
-                robot.stop_all_movement()
-                robot.move_for(200, 0, 200, MMPS, False)
-                began = clock.time(MSEC)
-                while not robot.is_stopped() and not robot.has_orange_barrel():
-                    if clock.time(MSEC) - began >= 2000 or clock.time(MSEC) >= 20000:
-                        raise RuntimeError("Collection movement deadline reached")
-                    wait(25, MSEC)
-                robot.stop_all_movement()
-                contacts += 1
-                if not robot.has_orange_barrel() and contacts == 1:
-                    robot.move_for(50, 180, 150, MMPS, False)
-                    began = clock.time(MSEC)
-                    while not robot.is_stopped():
-                        if clock.time(MSEC) - began >= 2000 or clock.time(MSEC) >= 20000:
-                            raise RuntimeError("Backoff movement deadline reached")
-                        wait(25, MSEC)
-            else:
-                robot.move_at(obj.bearing, 150, MMPS)
-        elif not seen:
-            robot.turn(RIGHT, 60, DPS)
-        else:
-            robot.stop_all_movement()
-            if now - last_seen_ms >= 600:
-                outcome = "target_lost"
-                break
-        wait(50, MSEC)
-    else:
-        outcome = "timed_out" if seen else "not_found"
-    robot.stop_all_movement()
-    if outcome == "collected":
-        robot.led.on(ALL_LEDS, GREEN)
-        robot.sound.play_note("C6", 200, 50)
-        robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)
-    print(outcome)
-finally:
-    robot.stop_all_movement()
+import json
+behaviors.configure(move_mmps=150, turn_dps=45, contact_mmps=200,
+                    timeout_ms=30000)
+result = behaviors.collect(ORANGE_BARREL)
+robot.led.on(ALL_LEDS, GREEN)
+robot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)
+robot.sound.play_note("C6", 200, 50)
+print(json.dumps(result))
 ```
 
-For blue barrels or balls, change both the detection target AND cargo predicate.
-`has_any_barrel()` cannot prove that the requested color was collected. Empty
-detections are normal; never index them unconditionally. A timeout/target loss
-ends with a short honest result rather than a false celebration or permission
-question. Native get-cargo macros in older CLI builds can confuse held cargo;
-the explicit color-specific loop above avoids that issue.
+For "find the ball and kick it", collect `SPORTS_BALL`, then call the native
+kicker with the requested strength. For a marker visit, use
+`behaviors.approach(TAG0)`. A failed helper raises, stops wheels and skips later
+success effects. Search coverage, detection dropouts, magnetic contact, one
+local recovery and the shared deadline are handled by the CLI.
 
-For AprilTag destinations, filter the desired ID before choosing a target. For
-color/code tracking, use an already configured signature or configure it through
-the documented API; don't assume a photograph automatically creates one. Only
-the mode needed for the activity needs enabling, not a new calibration ritual.
+Native coordinates are 320x240; bearings are degrees and image widths are pixels.
+A photograph is not needed for these trained kit classes. Keep a custom routine
+for unfamiliar objects in the agent image workflow instead of pretending the
+native model recognizes them.
 
 ## An agent-observed controller approach
 

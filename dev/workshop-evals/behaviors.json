@@ -1,0 +1,26 @@
+{
+  "scope": "Independent bounded delegate evaluation with current workshop and matching CLI behavior references; no hardware",
+  "invocation": "vexaim --json --session SESSION exec --behaviors --timeout 60 -f activity.py",
+  "outer_timeout_seconds": 150,
+  "questions": [],
+  "cases": [
+    {
+      "prompt": "Find the blue barrel, deliver it to Tag 0, smile and blink green.",
+      "cargo": "BLUE_BARREL",
+      "tag": "TAG0",
+      "source": "behaviors.configure(move_mmps=150, turn_dps=45, contact_mmps=200, timeout_ms=30000)\nbehaviors.collect(BLUE_BARREL)\nbehaviors.deliver(BLUE_BARREL, TAG0)\nrobot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\nfor _ in range(3):\n    robot.led.on(ALL_LEDS, GREEN)\n    wait(150, MSEC)\n    robot.led.off(ALL_LEDS)\n    wait(150, MSEC)\nprint(\"Delivery reported; HAPPY requested; green blinking completed\")"
+    },
+    {
+      "prompt": "Same game but orange barrel and Tag 2.",
+      "cargo": "ORANGE_BARREL",
+      "tag": "TAG2",
+      "source": "behaviors.configure(move_mmps=150, turn_dps=45, contact_mmps=200, timeout_ms=30000)\nbehaviors.collect(ORANGE_BARREL)\nbehaviors.deliver(ORANGE_BARREL, TAG2)\nrobot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\nfor _ in range(3):\n    robot.led.on(ALL_LEDS, GREEN)\n    wait(150, MSEC)\n    robot.led.off(ALL_LEDS)\n    wait(150, MSEC)\nprint(\"Delivery reported; HAPPY requested; green blinking completed\")"
+    },
+    {
+      "prompt": "Find the ball behind you, pick it up and kick it.",
+      "cargo": "SPORTS_BALL",
+      "tag": null,
+      "source": "behaviors.configure(move_mmps=150, turn_dps=45, contact_mmps=200, timeout_ms=30000)\nbehaviors.collect(SPORTS_BALL)\nrobot.kicker.kick(MEDIUM)\nprint(\"Ball collection reported; medium kick completed\")"
+    }
+  ]
+}

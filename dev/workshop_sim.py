@@ -16,6 +16,53 @@ from types import SimpleNamespace
 
 
 TARGETS = ('SPORTS_BALL', 'BLUE_BARREL', 'ORANGE_BARREL', 'AIM_ROBOT', 'TAG0')
+
+
+class BehaviorContract:
+    """Public API stub only. Controller/physics tests belong in vexaim-cli."""
+    def __init__(self, aim):
+        self.aim = aim
+
+    def configure(self, **settings):
+        self.aim.record('behaviors.configure', settings)
+
+    def collect(self, cargo):
+        aim = self.aim
+        aim.record('behaviors.collect', cargo)
+        if aim.stalled:
+            raise RuntimeError('Behavior deadline during contact')
+        if aim.fail_motion:
+            raise RuntimeError('Injected motion failure')
+        if aim.held is not None and aim.held != cargo:
+            raise RuntimeError('wrong_cargo')
+        if aim.fixture.get('target') != cargo and aim.held != cargo:
+            raise RuntimeError('not_found')
+        if aim.fixture.get('lose_after'):
+            raise RuntimeError('target_lost_before_contact')
+        aim.held = cargo
+        return {'collected': True, 'target': cargo, 'evidence': 'stub_contract'}
+
+    def find(self, target, direction='RIGHT'):
+        self.aim.record('behaviors.find', target, direction)
+        if self.aim.fixture.get('target') != target:
+            raise RuntimeError('not_found')
+        return {'target': target, 'evidence': 'stub_contract'}
+
+    def approach(self, target):
+        self.aim.record('behaviors.approach', target)
+        if not self.aim.fixture.get('tag'):
+            raise RuntimeError('not_found')
+        return {'approached': target, 'evidence': 'stub_contract'}
+
+    def deliver(self, cargo, tag):
+        aim = self.aim
+        aim.record('behaviors.deliver', cargo, tag)
+        if aim.held != cargo:
+            raise RuntimeError('cargo_required')
+        if not aim.fixture.get('tag'):
+            raise RuntimeError('not_found')
+        aim.held = None
+        return {'delivered': True, 'cargo': cargo, 'destination': tag, 'evidence': 'stub_contract'}
 FIXTURES = {
     'spin': {},
     'dance': {},
@@ -223,8 +270,9 @@ class Aim:
         names = ('MSEC SECONDS MMPS DPS PERCENT LEFT RIGHT ALL_LEDS BLUE PURPLE GREEN WHITE BLACK '
                  'YELLOW RED ORANGE CYAN SOFT MEDIUM HARD MONO12 MONO15 MONO20 MONO24 MONO30 '
                  'MONO36 MONO40 MONO60 PROP20 PROP24 PROP30 PROP36 PROP40 PROP60').split()
-        namespace = {name: name for name in names + list(TARGETS)}
+        namespace = {name: name for name in names + list(TARGETS) + ['TAG' + str(n) for n in range(38)]}
         namespace.update(robot=self, Robot=construct_robot, Timer=Timer, wait=self.wait,
+            behaviors=BehaviorContract(self),
             Emoji=SimpleNamespace(HAPPY='HAPPY', CONFUSED='CONFUSED', EXCITED='EXCITED', SILLY='SILLY'),
             EmojiLook=SimpleNamespace(LOOK_FORWARD='LOOK_FORWARD', LOOK_LEFT='LOOK_LEFT', LOOK_RIGHT='LOOK_RIGHT'))
         self.timer = Timer()
@@ -263,6 +311,9 @@ def run_source(source, fixture=None, **options):
         error = str(exc)
     finally:
         sys.settrace(previous)
+        if 'behaviors.' in source:
+            # Model the --behaviors activity wrapper's final wheel stop.
+            aim.stop_all_movement()
     return {'trace': aim.trace, 'elapsed_ms': aim.now, 'output': output.getvalue(),
             'error': error, 'stopped': aim.is_stopped(), 'held': aim.held}
 
@@ -302,9 +353,10 @@ def evaluate(case):
         ops = [item['op'] for item in result['trace']]
         require('Robot' not in ops, 'retained preamble Robot is reused')
         if identifier in ('fetch', 'search', 'lost'):
-            require('vision.get_data' in ops, 'native vision feedback used')
+            require(any(op in ops for op in ('vision.get_data', 'behaviors.collect', 'behaviors.find')),
+                    'native vision behavior used')
         if identifier == 'wrong_cargo':
-            require(any(t['op'] == 'vision.cargo' and t['args'] == ['ORANGE_BARREL'] for t in result['trace']),
+            require(any(t['op'] in ('vision.cargo', 'behaviors.collect') and t['args'] == ['ORANGE_BARREL'] for t in result['trace']),
                     'requested cargo class checked natively')
         if identifier in ('lost', 'wrong_cargo'):
             require('screen.show_emoji' not in ops and 'kicker.kick' not in ops,
@@ -313,7 +365,7 @@ def evaluate(case):
             require(result['held'] == 'ORANGE_BARREL' and 'screen.show_emoji' in ops,
                     'requested cargo collected before celebration')
         if identifier == 'search':
-            require('turn' in ops and 'kicker.kick' in ops, 'search completes with requested kick')
+            require(('turn' in ops or 'behaviors.collect' in ops) and 'kicker.kick' in ops, 'search completes with requested kick')
         if identifier == 'drawing':
             require(not any(op in ops for op in ('move_for','turn_for','move_at','turn','move_with_vectors','kicker.kick')),
                     'explicit no-movement constraint preserved')
