@@ -1,0 +1,13 @@
+{
+  "scope": "Independent bounded offline skill evaluation of 0.5.2 arrival handling; no hardware",
+  "invocation": "vexaim --json --session SESSION exec --behaviors --timeout 60 -f activity.py",
+  "outer_timeout_seconds": 150,
+  "host_ops": [
+    "exec"
+  ],
+  "questions": [],
+  "source": "import json\nbehaviors.configure(move_mmps=150, turn_dps=45, tag_turn_dps=90, contact_mmps=200, verification=\"contact\", timeout_ms=30000)\npickup = behaviors.collect(BLUE_BARREL)\ndelivery = behaviors.deliver(BLUE_BARREL, TAG0)\nrobot.screen.show_emoji(Emoji.HAPPY, EmojiLook.LOOK_FORWARD)\nprint(json.dumps({\"pickup\": pickup, \"delivery\": delivery, \"expression\": \"HAPPY\"}))",
+  "result_handling": "completed:true with delivered:null, evidence:near_marker_assumed and release_confirmed:true is normal play completion. Continue directly to the smile. Keep evidence in the result log; add no photo, confirmation, reacquisition turn or retry.",
+  "response_to_child": "Done—the pickup-and-delivery routine finished with a happy face.",
+  "ambiguities": []
+}

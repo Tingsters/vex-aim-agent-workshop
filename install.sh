@@ -64,9 +64,9 @@ fi
 VERSION=$(tr -d '\r\n' < "$TMP/VERSION")
 printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$' || die 'invalid CLI release version'
 core=${VERSION%%-*}; major=${core%%.*}; rest=${core#*.}; minor=${rest%%.*}; patch=${rest#*.}
-case "$VERSION" in 0.5.1-*) die 'this workshop requires vexaim 0.5.1+; no skills changed';; esac
-if ! { [ "$major" -gt 0 ] || [ "$minor" -gt 5 ] || { [ "$minor" -eq 5 ] && [ "$patch" -ge 1 ]; }; }; then
-  die 'this workshop requires vexaim 0.5.1+ for contact-based play and stationary tag search; no skills changed'
+case "$VERSION" in 0.5.2-*) die 'this workshop requires vexaim 0.5.2+; no skills changed';; esac
+if ! { [ "$major" -gt 0 ] || [ "$minor" -gt 5 ] || { [ "$minor" -eq 5 ] && [ "$patch" -ge 2 ]; }; }; then
+  die 'this workshop requires vexaim 0.5.2+ for contact-based play and marker arrival handling; no skills changed'
 fi
 if [ -z "$FROM_DIR" ]; then
   release=${BASE_URL:-$REPO/releases/download/v$VERSION}
@@ -89,7 +89,7 @@ install_cli() {
 install_cli || die 'CLI installation failed; workshop skill was not installed'
 tool=$(dirname -- "$1")/vex-aim/bin/vexaim
 behavior_help=$("$tool" exec --help) || die 'cannot inspect the installed CLI'
-case "$behavior_help" in *--behaviors*) ;; *) die 'this workshop requires vexaim 0.5.1+ with exec --behaviors; update CLI release assets; teaching skill was not installed';; esac
+case "$behavior_help" in *--behaviors*) ;; *) die 'this workshop requires vexaim 0.5.2+ with exec --behaviors; update CLI release assets; teaching skill was not installed';; esac
 for d do
   stage=$d.stage-$$; backup=$d.backup-$$
   if [ -e "$stage" ] || [ -e "$backup" ]; then die 'staging folder already exists'; fi

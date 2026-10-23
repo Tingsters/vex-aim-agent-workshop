@@ -215,6 +215,26 @@ class WorkshopBehaviors(unittest.TestCase):
             if 'smile' in case['prompt']:
                 self.assertIn('screen.show_emoji', ops)
 
+    def test_fast_play_plans_finish_effects_after_assumed_marker_arrival(self):
+        evaluation = json.loads((ROOT / 'dev/workshop-evals/fast-play.json').read_text())
+        review = json.loads((ROOT / 'dev/workshop-evals/arrival.json').read_text())
+        self.assertEqual(review['questions'], [])
+        self.assertEqual(review['host_ops'], ['exec'])
+        self.assertEqual(review['ambiguities'], [])
+        cases = evaluation['cases'] + [{'prompt':'blue to tag then smile','cargo':'BLUE_BARREL','tag':'TAG0','source':review['source']}]
+        for case in cases:
+            if case['tag'] is None:
+                continue
+            result = run_source(case['source'], {'target':case['cargo'],'tag':True,'near_marker_loss':True})
+            self.assertIsNone(result['error'])
+            self.assertTrue(result['stopped'])
+            outcome = json.loads(result['output'].splitlines()[-1])
+            self.assertTrue(outcome['delivery']['completed'])
+            self.assertEqual(outcome['delivery']['evidence'],'near_marker_assumed')
+            self.assertIsNone(outcome['delivery']['delivered'])
+            if 'smile' in case['prompt']:
+                self.assertIn('screen.show_emoji',[t['op'] for t in result['trace']])
+
     def test_independent_pickup_and_explicit_retry_plans(self):
         cases = json.loads((ROOT / 'dev/workshop-evals/recovery.json').read_text())['cases']
         for case in cases[:2]:

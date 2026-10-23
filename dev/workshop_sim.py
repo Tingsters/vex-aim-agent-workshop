@@ -65,10 +65,14 @@ class BehaviorContract:
             raise RuntimeError('cargo_required')
         if not aim.fixture.get('tag'):
             raise RuntimeError('not_found')
+        near_loss = bool(aim.fixture.get('near_marker_loss'))
+        if near_loss and not self.contact_play:
+            raise RuntimeError('marker_lost')
         aim.held = None
-        assumed = self.contact_play and aim.fixture.get('possession_missing')
+        assumed = near_loss or self.contact_play and aim.fixture.get('possession_missing')
         return {'delivered': None if assumed else True, 'completed': True,
-                'cargo': cargo, 'destination': tag, 'evidence': 'place_assumed' if assumed else 'stub_contract'}
+                'cargo': cargo, 'destination': tag,
+                'evidence': 'near_marker_assumed' if near_loss else 'place_assumed' if assumed else 'stub_contract'}
 FIXTURES = {
     'spin': {},
     'dance': {},

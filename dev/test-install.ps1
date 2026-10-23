@@ -30,8 +30,8 @@ try {
   Check (-not (Test-Path $target)) 'dry run writes nothing and needs no download'
   $oldAssets=Join-Path $work 'old-assets'
   Copy-Item -LiteralPath $assets -Destination $oldAssets -Recurse
-  '0.5.0' | Set-Content -LiteralPath (Join-Path $oldAssets 'VERSION')
-  Install $target @('-FromDir',$oldAssets) 'requires vexaim 0.5.1'
+  '0.5.1' | Set-Content -LiteralPath (Join-Path $oldAssets 'VERSION')
+  Install $target @('-FromDir',$oldAssets) 'requires vexaim 0.5.2'
   Check (-not (Test-Path $target)) 'old behavior release creates neither skill'
   Install $target @('-FromDir',$assets)
   foreach ($agent in @('.agents','.claude')) {

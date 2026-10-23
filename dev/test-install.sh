@@ -15,7 +15,7 @@ H1="$WORK/home with spaces"
 check install_to "$H1" --dry-run --from-dir not-a-real-directory
 check test ! -e "$H1"
 OLD="$WORK/old-assets"; cp -R "$ASSETS" "$OLD"
-printf '0.5.0\n' > "$OLD/VERSION"
+printf '0.5.1\n' > "$OLD/VERSION"
 expect_fail install_to "$H1" --from-dir "$OLD"
 check test ! -e "$H1"
 check install_to "$H1" --from-dir "$ASSETS"

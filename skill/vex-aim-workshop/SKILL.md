@@ -126,7 +126,7 @@ See `references/fast-behaviors.md` for adaptable, finite VEX Python examples.
 Do not turn these examples into a fixed menu or require a new student SDK.
 For pickup and delivery, read `references/cargo-and-tags.md`: collection needs
 deliberate magnetic contact and the requested cargo predicate. Use vexaim
-**0.5.1+** with `exec --behaviors` and its matching generic skill. Compose the
+**0.5.2+** with `exec --behaviors` and its matching generic skill. Compose the
 CLI's `behaviors.find`, `collect`, `approach` and `deliver` with native effects;
 do not regenerate or copy vision-control loops into workshop scripts. Check
 `exec --help` once before play and update the released tool/basic skill if the
@@ -139,6 +139,10 @@ agent analysis between steps. Treat `completed: true` with assumed evidence as
 routine completion; a null confirmation field is not a new failure or a request
 to photograph the robot. Diagnostic `verification="vision"` is for explicit
 testing. A missing target, expired activity or transport error still stops work.
+`near_marker_assumed` is also a completed play outcome: a recent close tag can
+disappear behind cargo at arrival, and the CLI finishes placement without a
+reacquisition turn or another agent decision. Don't turn that evidence into a
+new confirmation, photo or retry gate.
 Report that the routine ran; don't claim independent physical verification when
 its evidence is assumed. Save camera inspection for an explicit visual request,
 an unfamiliar target or a failure that needs a different strategy.

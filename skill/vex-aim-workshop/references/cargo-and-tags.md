@@ -1,6 +1,6 @@
 # Compose cargo pickup and marker delivery
 
-Use **vexaim 0.5.1+** and its matching generic skill. Read the generic skill's
+Use **vexaim 0.5.2+** and its matching generic skill. Read the generic skill's
 `references/behaviors.md` for the exact API. The CLI owns search, alignment,
 near-field contact, possession filtering, one recovery attempt, deadlines and
 release checks. This workshop chooses the task, pace and effects.
@@ -60,11 +60,18 @@ that meets a pen wall can end at its local time limit and still count as an
 attempt, once stopped; the whole-activity deadline remains enforced.
 
 Read `completed` and `evidence`, without adding a new confirmation gate.
-`contact_assumed` / `place_assumed` are expected play results: `collected` or
+`contact_assumed`, `place_assumed` and `near_marker_assumed` are expected play results: `collected` or
 `delivered` may be null while `completed` is true. Finish the requested effects
 and say the routine ran. Don't turn these nulls into camera checks or ask the
 child whether it worked. Use `verification="vision"` only for explicit
 measurement/testing that needs retention and release confirmation.
+
+At close-range arrival the carried barrel may hide the tag. The CLI first uses
+the observation already obtained during acquisition; in contact mode it can
+also accept a recent aligned near-tag sighting and finish gentle kicker
+placement. It stops the approach before placing, with no extra forward charge
+or turn away to reacquire. Missing or distant markers still fail. Keep this
+decision on the robot rather than adding a new laptop image or child question.
 
 Keep the child-facing response brief: "Done—the pickup-and-delivery routine
 finished." Evidence fields belong in the result log. Don't narrate verification
