@@ -267,7 +267,7 @@ class Aim:
     def namespace(self):
         aim = self
         def construct_robot():
-            # Namespace already has an initialized object, as CLI exec does.
+            # Reuse the initialized object, matching CLI execution behavior.
             self.record('Robot')
             return self
         class Timer:
